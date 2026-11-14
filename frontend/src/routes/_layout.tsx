@@ -11,7 +11,11 @@ import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    // 서비스 첫 화면은 CHEER 101 (/cheer). 템플릿 대시보드는 /admin 등으로만 들어간다
+    if (location.pathname === "/") {
+      throw redirect({ to: "/cheer" })
+    }
     if (!isLoggedIn()) {
       throw redirect({
         to: "/login",

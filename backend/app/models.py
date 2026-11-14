@@ -503,12 +503,17 @@ class BattleState(SQLModel):
     me: BattleMe
 
 
+class BattleTopEntry(LeaderboardEntry):
+    points: int  # 이 대결로 받은 포인트(100/50/30)
+
+
 class BattleResult(SQLModel):
     id: uuid.UUID
-    top3: list[LeaderboardEntry]
+    top3: list[BattleTopEntry]
     me: BattleMe
     my_top_percent: int | None = None  # 상위 몇 %인지, 미참여면 None
     participants: int
+    my_points: int = 0  # 내가 이 대결로 받은 포인트, TOP3 밖이면 0
 
 
 class CheerResult(enum.StrEnum):
@@ -629,6 +634,36 @@ class ShareCard(SQLModel):
     fairy_label: str
     stats: StatsPublic  # total이 경기수
     favorite_team: TeamPublic | None
+
+
+# --- BE-2 (보상 조회) ---
+class PointTransactionPublic(SQLModel):
+    id: uuid.UUID
+    amount: int
+    reason: PointReason
+    related_id: str | None  # MATCH_RESULT면 matchId, DECIBEL_TOP3면 battleId
+    created_at: datetime
+
+
+class PointsPublic(SQLModel):
+    data: list[PointTransactionPublic]
+    count: int  # 전체 내역 수
+    page: int
+    size: int
+    total_points: int
+
+
+class UserBadgePublic(SQLModel):
+    code: str
+    name: str
+    description: str
+    icon_url: str
+    acquired_at: datetime
+
+
+class UserBadgesPublic(SQLModel):
+    data: list[UserBadgePublic]
+    count: int
 
 
 # --- AI ---

@@ -12,31 +12,17 @@ export type UserTableData = UserPublic & {
 
 export const columns: ColumnDef<DataTableFeatures, UserTableData>[] = [
   {
-    accessorKey: "full_name",
-    header: "Full Name",
-    cell: ({ row }) => {
-      const fullName = row.original.full_name
-      return (
-        <div className="flex items-center gap-2">
-          <span
-            className={cn("font-medium", !fullName && "text-muted-foreground")}
-          >
-            {fullName || "N/A"}
-          </span>
-          {row.original.isCurrentUser && (
-            <Badge variant="outline" className="text-xs">
-              You
-            </Badge>
-          )}
-        </div>
-      )
-    },
-  },
-  {
     accessorKey: "email",
     header: "Email",
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.email}</span>
+      <div className="flex items-center gap-2">
+        <span className="font-medium">{row.original.email}</span>
+        {row.original.isCurrentUser && (
+          <Badge variant="outline" className="text-xs">
+            You
+          </Badge>
+        )}
+      </div>
     ),
   },
   {
