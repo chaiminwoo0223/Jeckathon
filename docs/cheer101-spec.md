@@ -259,7 +259,7 @@ Fortune {
 - 로그인 아이디는 별도 칼럼 없이 `email` 칼럼에 합성해 저장한다(`{username}@users.cheer101.example.com`, 메일은 보내지 않는다). 아이디 중복 체크는 이 칼럼의 unique로 한다. 그래서 `/me`·로그인 응답의 `user`에는 `email`·`username`이 없다. `User`의 이름 필드는 `nickname` 하나뿐이고 템플릿의 `full_name`은 제거했다. 관리자 계정은 템플릿의 `/login/access-token`(이메일)으로 로그인한다.
 - 로그인 실패는 아이디가 없든 비밀번호가 틀리든 같은 400 응답이다.
 - `POST /me/teams`, `DELETE /me/teams/{teamId}`는 갱신된 응원팀 목록 `{data, count}`를 돌려준다. 이미 있는 팀 추가는 그대로 두고, 없는 팀 삭제는 404다.
-- `GET /me`의 `stats`는 CheerRecord(§4.3)가 생기기 전까지 전부 0이고 `fairy_type`은 `NEUTRAL`이다.
+- `GET /me`와 `GET /me/stats`의 통계는 확정된 응원 기록(PENDING 제외)으로 센다. `total`은 승+무+패다.
 - `nickname`이 비어 있으면 이름, 그것도 없으면 이메일 앞부분으로 채워 응답한다.
 
 **GET /me 응답 예시**
@@ -297,6 +297,11 @@ Fortune {
 | GET | /me/badges | 획득 배지 목록 |
 | GET | /me/points?page= | 포인트 내역 |
 | GET | /me/share-card | SNS 공유 카드 데이터 (승률, 경기수, 요정, 최애팀) |
+
+**구현 메모 (BE-1)**
+
+- `POST /matches/{id}/cheer`: `cheeredTeamId`는 그 경기의 홈팀 또는 원정팀이어야 한다(아니면 400). 종료(FINISHED)된 경기는 409다. 이미 정산으로 확정된 기록도 수정할 수 없다(409). 같은 경기에 다시 보내면 새 기록이 아니라 응원팀만 바뀐다.
+- `GET /me/records?page=&size=`: 1부터 시작하는 `page`, 기본 `size` 20(최대 100). 최근 경기 순이고 각 항목에 `match`(팀 정보 포함)가 들어 있다. 응답은 `{data, count, page, size}`이고 `count`는 전체 기록 수다.
 
 **경기 종료 처리 (내부 배치/관리자 트리거)**
 

@@ -1,6 +1,10 @@
-"""승률·요정 판정 (명세 §3.1, §3.2). CheerRecord 집계는 정산 단계에서 이 함수들을 쓴다."""
+"""승률·요정 판정 (명세 §3.1, §3.2)과 응원 기록 집계. 정산 단계에서도 이 함수들을 쓴다."""
 
-from app.models import FairyType, StatsPublic
+import uuid
+
+from sqlmodel import Session, col, func, select
+
+from app.models import CheerRecord, CheerResult, FairyType, StatsPublic
 
 VICTORY_WIN_RATE = 0.6  # 승률 이 값 이상이면 승리요정
 DEFEAT_LOSE_RATE = 0.3  # 패배율 이 값 이상이면 패배요정 (승리요정이 우선)
@@ -42,4 +46,21 @@ def build_stats(win: int, draw: int, lose: int) -> StatsPublic:
         lose=lose,
         win_rate=round(win_rate, 2),
         lose_rate=round(lose_rate, 2),
+    )
+
+
+def user_stats(session: Session, user_id: uuid.UUID) -> StatsPublic:
+    """확정된 응원 기록(PENDING 제외)으로 승/무/패를 센다."""
+    rows = session.exec(
+        select(CheerRecord.result, func.count())
+        .where(
+            CheerRecord.user_id == user_id, CheerRecord.result != CheerResult.PENDING
+        )
+        .group_by(col(CheerRecord.result))
+    ).all()
+    counts = dict(rows)
+    return build_stats(
+        win=counts.get(CheerResult.WIN, 0),
+        draw=counts.get(CheerResult.DRAW, 0),
+        lose=counts.get(CheerResult.LOSE, 0),
     )
