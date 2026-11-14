@@ -335,6 +335,105 @@ class UsernameCheck(SQLModel):
     available: bool
 
 
+# --- BE-2 ---
+class Community(SQLModel, table=True):
+    """경기 1개당 1개 응원방."""
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    match_id: uuid.UUID = Field(foreign_key="match.id", unique=True, nullable=False)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class CommunityPublic(SQLModel):
+    id: uuid.UUID
+    match_id: uuid.UUID
+    created_at: datetime
+
+
+class BattleStatus(enum.StrEnum):
+    WAITING = "WAITING"
+    ONGOING = "ONGOING"
+    FINISHED = "FINISHED"
+
+
+class Battle(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    community_id: uuid.UUID = Field(
+        foreign_key="community.id", nullable=False, index=True
+    )
+    status: BattleStatus = Field(default=BattleStatus.WAITING)
+    duration_sec: int = 60
+    max_players: int = 5
+    started_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    ends_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class BattleRecord(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("battle_id", "user_id"),)
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    battle_id: uuid.UUID = Field(
+        foreign_key="battle.id", nullable=False, ondelete="CASCADE"
+    )
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    peak_db: float  # 유저별 최고값, 제출할 때마다 max 유지
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class BattleCreate(SQLModel):
+    duration_sec: int = Field(default=60, ge=5, le=600)
+
+
+class BattleRecordSubmit(SQLModel):
+    # Web Audio 게임용 dB(명세 §0). 실제 SPL 아님
+    peak_db: float = Field(ge=0, le=200)
+
+
+class LeaderboardEntry(SQLModel):
+    rank: int
+    user_id: uuid.UUID
+    nickname: str
+    peak_db: float
+
+
+class BattleMe(SQLModel):
+    rank: int | None = None  # 아직 제출 안 했으면 None
+    peak_db: float | None = None
+
+
+class BattleState(SQLModel):
+    id: uuid.UUID
+    community_id: uuid.UUID
+    status: BattleStatus
+    remaining_sec: int
+    ends_at: datetime | None
+    max_players: int
+    leaderboard: list[LeaderboardEntry]
+    me: BattleMe
+
+
+class BattleResult(SQLModel):
+    id: uuid.UUID
+    top3: list[LeaderboardEntry]
+    me: BattleMe
+    my_top_percent: int | None = None  # 상위 몇 %인지, 미참여면 None
+    participants: int
+
+
 class CheerResult(enum.StrEnum):
     PENDING = "PENDING"  # 경기 종료 전
     WIN = "WIN"
