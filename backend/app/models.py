@@ -648,9 +648,48 @@ class Fortune(SQLModel, table=True):
     luck_score: int  # 0~100
 
 
+class Player(SQLModel, table=True):
+    """운세 입력용 선수(KBO 공개 명단 스냅샷). 생년월일이 핵심 입력이다."""
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    kbo_id: int = Field(unique=True, index=True)
+    team_id: uuid.UUID = Field(
+        foreign_key="team.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    name: str = Field(max_length=50)
+    position: str = Field(
+        default="", max_length=20, sa_column_kwargs={"server_default": ""}
+    )  # 투수/포수/내야수/외야수
+    back_number: str | None = Field(default=None, max_length=10)
+    birth_date: date_type
+
+
+class FortuneGrade(enum.StrEnum):
+    BEST = "대길"
+    GOOD = "중길"
+    SMALL_GOOD = "소길"
+    SMALL_BAD = "소흉"
+    BAD = "중흉"
+    WORST = "대흉"
+
+
+class FortunePlayer(SQLModel):
+    kbo_id: int
+    name: str
+    position: str
+    back_number: str | None
+    birth_year: int  # 생년월일 전체는 내리지 않는다
+    grade: FortuneGrade
+    luck_score: int  # 0~99
+    one_liner: str
+
+
 class FortunePublic(SQLModel):
     match_id: uuid.UUID
     team_id: uuid.UUID
     fortune_text: str
     cheer_tip: str
     luck_score: int
+    grade: FortuneGrade
+    lucky_players: list[FortunePlayer] = []  # 기운 좋은 선수 3명
+    caution_player: FortunePlayer | None = None  # 조심할 선수(흉 계열일 때만)
