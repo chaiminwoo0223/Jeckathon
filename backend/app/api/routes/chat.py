@@ -58,7 +58,7 @@ async def chat_ws(websocket: WebSocket, room_id: int, token: str) -> None:
     try:
         with Session(engine) as session:
             user = get_current_user(session, token)
-            user_id, name = str(user.id), user.full_name or user.email
+            user_id, name = str(user.id), user.display_nickname
     except HTTPException:
         await websocket.close(code=1008)
         return

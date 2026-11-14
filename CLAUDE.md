@@ -44,7 +44,7 @@
 - 토큰: `POST /api/v1/login/access-token`이 주는 `access_token`(localStorage `access_token`). 지금 `/cheer/login`은 백엔드를 부르지 않으므로 이 토큰이 없다.
 - 거부: 토큰이 없거나 틀리면, 방 번호가 1·2가 아니면 연결 전에 끊긴다(close code 1008).
 - 보내기: 텍스트 그대로 `ws.send(text)`. 서버가 앞뒤 공백을 지우고 500자로 자르며 빈 문자열은 버린다.
-- 받기: JSON `{room_id, user_id, name, text, sent_at}`. `name`은 `full_name`, 없으면 이메일. 내가 보낸 것도 서버가 되돌려 주므로 화면에 직접 추가하지 않는다(중복된다). 내 메시지인지는 `user_id === JWT payload의 sub`로 가린다.
+- 받기: JSON `{room_id, user_id, name, text, sent_at}`. `name`은 닉네임(`User.display_nickname`, 비어 있으면 이메일 앞부분). 내가 보낸 것도 서버가 되돌려 주므로 화면에 직접 추가하지 않는다(중복된다). 내 메시지인지는 `user_id === JWT payload의 sub`로 가린다.
 - 순서: 같은 방의 모든 사람이 같은 순서로 받는다(4명 동시 전송으로 확인). `sent_at`은 받은 순서대로 증가한다.
 - 입장 직후 그 방의 최근 50개가 먼저 온다. DB에 저장하지 않으므로 서버를 재시작하면 사라진다.
 - 접속자 수(화면의 "14명")는 백엔드에 아직 없다.
