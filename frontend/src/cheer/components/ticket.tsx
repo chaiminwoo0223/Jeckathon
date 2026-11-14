@@ -17,10 +17,12 @@ export function Ticket({
   applied,
   state,
   onEnter,
+  entering = false,
 }: {
   applied: AppliedMatch
   state: InvitationState
   onEnter: () => void
+  entering?: boolean // 입장 요청 중
 }) {
   const { match, cheeredTeam } = applied
   const active = state.canEnter
@@ -98,7 +100,8 @@ export function Ticket({
           </div>
 
           <p className="mt-3 text-center text-xs font-bold text-[var(--c-ink-soft)]">
-            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} 킥오프
+            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} 경기
+            시작{applied.venue && ` · ${applied.venue}`}
           </p>
 
           {/* 좌석 메타 */}
@@ -114,7 +117,7 @@ export function Ticket({
           {/* 입장 버튼 */}
           <button
             type="button"
-            disabled={!active}
+            disabled={!active || entering}
             onClick={onEnter}
             className={cn(
               "mt-4 flex w-full items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-extrabold transition-all",
@@ -123,13 +126,16 @@ export function Ticket({
                 : "cursor-not-allowed bg-[var(--c-surface-2)] text-[var(--c-muted)]",
             )}
           >
-            {active ? (
+            {!active ? (
               <>
-                입장하기 <ChevronRight size={16} />
+                <Lock size={13} /> {formatTime(applied.enterOpensAt)}부터 입장
+                가능
               </>
+            ) : entering ? (
+              "입장 중…"
             ) : (
               <>
-                <Lock size={13} /> 경기 1시간 전 입장 가능
+                입장하기 <ChevronRight size={16} />
               </>
             )}
           </button>
