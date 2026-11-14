@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
@@ -27,16 +28,15 @@ import {
   type AppliedMatch,
   BATTLE_PLAYERS,
   BATTLE_REWARDS,
-  DEFEAT_RANKING,
   FORTUNES,
   formatKDate,
   formatTime,
   type Match,
   pct,
+  type RankingEntry,
   TEAMS,
   type Team,
   TODAY_MATCH,
-  VICTORY_RANKING,
 } from "@/cheer/data/mock"
 import {
   entryState,
@@ -46,6 +46,7 @@ import {
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
 import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
+import { type RankingEntryPublic, RankingsService } from "@/client"
 
 export const Route = createFileRoute("/cheer/community")({
   component: CommunityPage,
@@ -54,6 +55,20 @@ export const Route = createFileRoute("/cheer/community")({
 type Stage = "invite" | "room" | "measuring" | "result" | "arena"
 const BATTLE_SECONDS = 20
 const TARGET_DB = 90
+
+// API 랭킹 응답에는 아바타 이모지가 없어 순위 기준으로 안정적으로 하나 고른다.
+const RANK_EMOJI = ["🦁", "🐯", "🐻", "🐰", "🐱", "🦊", "🐸", "🐧", "🐥", "🐨"]
+
+function toRankingEntry(e: RankingEntryPublic): RankingEntry {
+  return {
+    rank: e.rank,
+    nickname: e.nickname,
+    rate: e.rate,
+    played: e.played,
+    wins: e.win,
+    emoji: RANK_EMOJI[(e.rank - 1) % RANK_EMOJI.length],
+  }
+}
 
 function CommunityPage() {
   const [stage, setStage] = useState<Stage>("invite")
@@ -306,6 +321,21 @@ function Room({
   onEnterArena: () => void
 }) {
   const fortune = FORTUNES[cheerTeam.id] ?? FORTUNES[TEAMS.arsenal.id]
+  // 오늘의 승리요정/패배요정 랭킹 (명세 §4.5, 3초 폴링)
+  const victoryQuery = useQuery({
+    queryKey: ["rankings", "victory"],
+    queryFn: async () => (await RankingsService.readVictoryRanking()).data,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+  const defeatQuery = useQuery({
+    queryKey: ["rankings", "defeat"],
+    queryFn: async () => (await RankingsService.readDefeatRanking()).data,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+  const victoryRanking = (victoryQuery.data?.data ?? []).map(toRankingEntry)
+  const defeatRanking = (defeatQuery.data?.data ?? []).map(toRankingEntry)
   return (
     <div className="cheer-reveal space-y-6">
       <div className="flex items-center justify-between">
@@ -385,14 +415,14 @@ function Room({
           emoji="🌧️"
           accent="var(--c-lose)"
           soft="var(--c-lose-soft)"
-          data={DEFEAT_RANKING.slice(0, 3)}
+          data={defeatRanking.slice(0, 3)}
         />
         <MiniRanking
           title="오늘의 승리요정 랭킹"
           emoji="👑"
           accent="var(--c-primary)"
           soft="var(--c-primary-50)"
-          data={VICTORY_RANKING.slice(0, 3)}
+          data={victoryRanking.slice(0, 3)}
         />
       </div>
 
@@ -430,7 +460,7 @@ function MiniRanking({
   emoji: string
   accent: string
   soft: string
-  data: typeof VICTORY_RANKING
+  data: RankingEntry[]
 }) {
   return (
     <SectionCard>
