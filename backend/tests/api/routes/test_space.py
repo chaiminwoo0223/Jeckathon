@@ -48,10 +48,10 @@ def test_space_join_move_leave(
             )
             # 범위 밖 좌표는 방 안으로 잘린다
             a.send_json({"type": "move", "x": 99, "y": -5})
-            want = {"type": "move", "user_id": a_id, "x": 19, "y": 0}
-            while (msg := b.receive_json())["type"] != "move":
+            # move는 TICK마다 사람별 마지막 위치를 모은 moves 프레임으로 온다
+            while (msg := b.receive_json())["type"] != "moves":
                 pass
-            assert msg == want
+            assert msg == {"type": "moves", "p": {a_id: [19, 0]}}
             b_id = snap_b["me"]
         while (msg := a.receive_json())["type"] != "leave":
             pass

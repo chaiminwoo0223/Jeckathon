@@ -68,7 +68,7 @@ ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)])
   - `snapshot` (연결 직후 한 번): `{"type":"snapshot","v":1,"me":"<내 user_id>","room":{"id":"<community_id>","w":20,"h":12},"users":[{"user_id","name","avatar_url","x","y"}]}`. 받으면 사람 목록을 통째로 바꾼다.
   - `join`: `{"type":"join","user":{…users 한 칸…}}`. 이미 있는 사람이면 덮어쓴다(같은 사람이 탭을 더 연 경우).
   - `leave`: `{"type":"leave","user_id"}`. 그 사람의 마지막 탭이 닫혀야 온다.
-  - `move`: `{"type":"move","user_id","x","y"}`. 내 이동도 서버가 되돌려 준다(서버가 범위 밖 값을 잘라서 보낸다).
+  - `moves`: `{"type":"moves","p":{"<user_id>":[x,y],…}}`. 서버가 0.1초마다 그 사이 움직인 사람의 마지막 위치만 모아 보낸다(연결당 최대 10프레임/s, 이동이 화면에 뜨기까지 평균 약 50ms). 내 이동도 여기 들어온다(범위 밖 값은 잘려서). 목록에 없는 `user_id`는 무시한다(`leave` 직후 늦게 온 위치).
   - `emote`: `{"type":"emote","user_id","emote"}`. 말풍선·애니메이션으로 잠깐 보여 준다(저장 안 함).
   - `pong`, `error`(`{"type":"error","code":"bad_message"}`).
 - 보내기(client→server): `{"type":"move","x":7,"y":4}`(탭할 때만, 초당 10개 넘는 건 서버가 버린다), `{"type":"emote","emote":"clap"}`(`clap`·`cheer`·`wave`·`fire`, 1초에 1번), `{"type":"ping"}`(25초마다. 60초 동안 아무것도 안 보내면 다른 사람 화면에서 사라진다).

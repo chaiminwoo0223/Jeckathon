@@ -24,6 +24,7 @@ W, H = 20, 12
 SEEN_TTL = 60  # 초. 클라이언트는 25초마다 ping을 보낸다
 KEY_TTL = 86400  # 아무도 안 오는 방의 키는 하루 뒤 사라진다
 QUEUE_MAX = 256
+TICK = 0.1  # 초. move를 모아 보내는 간격(연결당 최대 10프레임/s)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,10 @@ class Hub:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._r: redis.Redis | None = None
         self._listener: asyncio.Task[None] | None = None
+        self._flusher: asyncio.Task[None] | None = None
         self._ready: asyncio.Event | None = None
+        # cid -> user_id -> [x, y]: 이번 TICK에 모인 마지막 위치
+        self.pending: dict[str, dict[str, list[int]]] = {}
 
     @property
     def r(self) -> redis.Redis:
@@ -57,7 +61,9 @@ class Hub:
             self._loop = loop
             self._r = redis.from_url(settings.REDIS_URL, decode_responses=True)
             self._ready = asyncio.Event()
+            self.pending = {}
             self._listener = asyncio.create_task(self._listen())
+            self._flusher = asyncio.create_task(self._flush())
         assert self._ready is not None
         await asyncio.wait_for(self._ready.wait(), timeout=5)
 
@@ -77,6 +83,25 @@ class Hub:
                 await asyncio.sleep(1)
 
     def _fanout(self, cid: str, data: str) -> None:
+        if cid not in self.rooms:
+            return
+        msg = json.loads(data)
+        if msg["type"] == "move":
+            # move는 바로 보내지 않고 사람별 마지막 위치만 모아 TICK마다 한 프레임으로 보낸다
+            self.pending.setdefault(cid, {})[msg["user_id"]] = [msg["x"], msg["y"]]
+            return
+        if msg["type"] == "leave":
+            self.pending.get(cid, {}).pop(msg["user_id"], None)
+        self._put(cid, data)
+
+    async def _flush(self) -> None:
+        while True:
+            await asyncio.sleep(TICK)
+            pending, self.pending = self.pending, {}
+            for cid, moves in pending.items():
+                self._put(cid, _dumps({"type": "moves", "p": moves}))
+
+    def _put(self, cid: str, data: str) -> None:
         for q in list(self.rooms.get(cid, ())):
             try:
                 q.put_nowait(data)
