@@ -1,17 +1,17 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   createFileRoute,
   Link,
   redirect,
   useNavigate,
 } from "@tanstack/react-router"
+import type { AxiosError } from "axios"
 import { type FormEvent, useState } from "react"
 import { toast } from "sonner"
 import { AuthField } from "@/cheer/components/auth-field"
 import { SocialButtons } from "@/cheer/components/social-buttons"
-import { LoginService, MeService, UsersService } from "@/client"
+import { LoginService, MeService } from "@/client"
 import { isLoggedIn } from "@/hooks/useAuth"
-import { handleError } from "@/utils"
 import { AuthShell, Divider } from "./cheer_.login"
 
 export const Route = createFileRoute("/cheer_/signup")({
@@ -25,39 +25,43 @@ export const Route = createFileRoute("/cheer_/signup")({
 
 function SignupPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [nickname, setNickname] = useState("")
-  const [email, setEmail] = useState("")
+  const [id, setId] = useState("")
   const [pw, setPw] = useState("")
   const [pw2, setPw2] = useState("")
 
   const signUpMutation = useMutation({
-    // User 에 full_name 이 없어져(#11) 닉네임은 가입 뒤 로그인해서 프로필로 저장한다
     mutationFn: async () => {
-      await UsersService.registerUser({
-        body: { email: email.trim(), password: pw },
+      const res = await LoginService.signup({
+        body: { username: id.trim(), password: pw },
       })
-      const token = (
-        await LoginService.loginAccessToken({
-          body: { username: email.trim(), password: pw },
-        })
-      ).data
-      localStorage.setItem("access_token", token.access_token)
-      if (nickname.trim()) {
-        await MeService.updateProfile({
-          body: { nickname: nickname.trim() },
-        }).catch(() => undefined)
-      }
+      localStorage.setItem("access_token", res.data.access_token)
+      // 가입 API는 닉네임을 받지 않아(아이디로 채워짐) 바로 프로필에 저장한다. 실패해도 가입은 끝났으니 진행
+      await MeService.updateProfile({
+        body: { nickname: nickname.trim() },
+      }).catch(() => toast.error("닉네임은 마이페이지에서 다시 설정해주세요."))
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
       toast.success("회원가입 완료! 응원단에 오신 걸 환영해요")
       navigate({ to: "/cheer" })
     },
-    onError: handleError.bind(toast.error),
+    onError: (err) => {
+      const status = (err as AxiosError).response?.status
+      toast.error(
+        status === 409
+          ? "이미 사용 중인 아이디예요."
+          : status === 422
+            ? "아이디는 영문·숫자·_ 4~20자로 입력해주세요."
+            : "가입하지 못했어요. 잠시 후 다시 시도해주세요.",
+      )
+    },
   })
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!nickname.trim() || !email.trim() || !pw.trim()) {
+    if (!nickname.trim() || !id.trim() || !pw.trim()) {
       toast.error("모든 항목을 입력해주세요.")
       return
     }
@@ -85,12 +89,11 @@ function SignupPage() {
           placeholder="응원단에서 사용할 닉네임"
         />
         <AuthField
-          label="이메일"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          placeholder="이메일을 입력하세요"
-          autoComplete="email"
+          label="아이디"
+          value={id}
+          onChange={setId}
+          placeholder="영문·숫자·_ 4~20자"
+          autoComplete="username"
         />
         <AuthField
           label="비밀번호"

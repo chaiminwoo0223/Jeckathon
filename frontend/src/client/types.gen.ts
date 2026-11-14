@@ -80,7 +80,7 @@ export type BattleResult = {
     /**
      * Top3
      */
-    top3: Array<LeaderboardEntry>;
+    top3: Array<BattleTopEntry>;
     me: BattleMe;
     /**
      * My Top Percent
@@ -90,6 +90,10 @@ export type BattleResult = {
      * Participants
      */
     participants: number;
+    /**
+     * My Points
+     */
+    my_points?: number;
 };
 
 /**
@@ -128,6 +132,32 @@ export type BattleState = {
  * BattleStatus
  */
 export type BattleStatus = 'WAITING' | 'ONGOING' | 'FINISHED';
+
+/**
+ * BattleTopEntry
+ */
+export type BattleTopEntry = {
+    /**
+     * Rank
+     */
+    rank: number;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Peak Db
+     */
+    peak_db: number;
+    /**
+     * Points
+     */
+    points: number;
+};
 
 /**
  * Body_login-login_access_token
@@ -420,6 +450,78 @@ export type CommunityPublic = {
  * FairyType
  */
 export type FairyType = 'VICTORY' | 'DEFEAT' | 'NEUTRAL';
+
+/**
+ * FortuneGrade
+ */
+export type FortuneGrade = '대길' | '중길' | '소길' | '소흉' | '중흉' | '대흉';
+
+/**
+ * FortunePlayer
+ */
+export type FortunePlayer = {
+    /**
+     * Kbo Id
+     */
+    kbo_id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Position
+     */
+    position: string;
+    /**
+     * Back Number
+     */
+    back_number: string | null;
+    /**
+     * Birth Year
+     */
+    birth_year: number;
+    grade: FortuneGrade;
+    /**
+     * Luck Score
+     */
+    luck_score: number;
+    /**
+     * One Liner
+     */
+    one_liner: string;
+};
+
+/**
+ * FortunePublic
+ */
+export type FortunePublic = {
+    /**
+     * Match Id
+     */
+    match_id: string;
+    /**
+     * Team Id
+     */
+    team_id: string;
+    /**
+     * Fortune Text
+     */
+    fortune_text: string;
+    /**
+     * Cheer Tip
+     */
+    cheer_tip: string;
+    /**
+     * Luck Score
+     */
+    luck_score: number;
+    grade: FortuneGrade;
+    /**
+     * Lucky Players
+     */
+    lucky_players?: Array<FortunePlayer>;
+    caution_player?: FortunePlayer | null;
+};
 
 /**
  * HTTPValidationError
@@ -759,6 +861,78 @@ export type NewPassword = {
 };
 
 /**
+ * PointReason
+ */
+export type PointReason = 'MATCH_RESULT' | 'DECIBEL_TOP3';
+
+/**
+ * PointTransactionPublic
+ */
+export type PointTransactionPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Amount
+     */
+    amount: number;
+    reason: PointReason;
+    /**
+     * Related Id
+     */
+    related_id: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * PointsPublic
+ */
+export type PointsPublic = {
+    /**
+     * Data
+     */
+    data: Array<PointTransactionPublic>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Total Points
+     */
+    total_points: number;
+};
+
+/**
+ * PrivateUserCreate
+ */
+export type PrivateUserCreate = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Password
+     */
+    password: string;
+    /**
+     * Is Verified
+     */
+    is_verified?: boolean;
+};
+
+/**
  * ProfileUpdate
  */
 export type ProfileUpdate = {
@@ -774,6 +948,71 @@ export type ProfileUpdate = {
      * Profile Image Url
      */
     profile_image_url?: string | null;
+};
+
+/**
+ * RankingEntryPublic
+ */
+export type RankingEntryPublic = {
+    /**
+     * Rank
+     */
+    rank: number;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Fairy Label
+     */
+    fairy_label: string;
+    /**
+     * Profile Image Url
+     */
+    profile_image_url: string | null;
+    /**
+     * Rate
+     */
+    rate: number;
+    /**
+     * Played
+     */
+    played: number;
+    /**
+     * Win
+     */
+    win: number;
+    /**
+     * Draw
+     */
+    draw: number;
+    /**
+     * Lose
+     */
+    lose: number;
+};
+
+/**
+ * RankingPublic
+ */
+export type RankingPublic = {
+    /**
+     * Date
+     */
+    date: string;
+    kind: FairyType;
+    /**
+     * Data
+     */
+    data: Array<RankingEntryPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -903,6 +1142,46 @@ export type UpdatePassword = {
      * New Password
      */
     new_password: string;
+};
+
+/**
+ * UserBadgePublic
+ */
+export type UserBadgePublic = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Icon Url
+     */
+    icon_url: string;
+    /**
+     * Acquired At
+     */
+    acquired_at: string;
+};
+
+/**
+ * UserBadgesPublic
+ */
+export type UserBadgesPublic = {
+    /**
+     * Data
+     */
+    data: Array<UserBadgePublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -2437,3 +2716,181 @@ export type battlesReadBattleResultResponses = {
 };
 
 export type battlesReadBattleResultResponse = battlesReadBattleResultResponses[keyof battlesReadBattleResultResponses];
+
+export type fortuneReadFortuneData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * Team Id
+         */
+        team_id: string;
+    };
+    url: '/api/v1/matches/{id}/fortune';
+};
+
+export type fortuneReadFortuneErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type fortuneReadFortuneError = fortuneReadFortuneErrors[keyof fortuneReadFortuneErrors];
+
+export type fortuneReadFortuneResponses = {
+    /**
+     * Successful Response
+     */
+    200: FortunePublic;
+};
+
+export type fortuneReadFortuneResponse = fortuneReadFortuneResponses[keyof fortuneReadFortuneResponses];
+
+export type rankingsReadVictoryRankingData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date
+         */
+        date?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/rankings/victory';
+};
+
+export type rankingsReadVictoryRankingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rankingsReadVictoryRankingError = rankingsReadVictoryRankingErrors[keyof rankingsReadVictoryRankingErrors];
+
+export type rankingsReadVictoryRankingResponses = {
+    /**
+     * Successful Response
+     */
+    200: RankingPublic;
+};
+
+export type rankingsReadVictoryRankingResponse = rankingsReadVictoryRankingResponses[keyof rankingsReadVictoryRankingResponses];
+
+export type rankingsReadDefeatRankingData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date
+         */
+        date?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/rankings/defeat';
+};
+
+export type rankingsReadDefeatRankingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rankingsReadDefeatRankingError = rankingsReadDefeatRankingErrors[keyof rankingsReadDefeatRankingErrors];
+
+export type rankingsReadDefeatRankingResponses = {
+    /**
+     * Successful Response
+     */
+    200: RankingPublic;
+};
+
+export type rankingsReadDefeatRankingResponse = rankingsReadDefeatRankingResponses[keyof rankingsReadDefeatRankingResponses];
+
+export type meReadMyPointsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Size
+         */
+        size?: number;
+    };
+    url: '/api/v1/me/points';
+};
+
+export type meReadMyPointsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meReadMyPointsError = meReadMyPointsErrors[keyof meReadMyPointsErrors];
+
+export type meReadMyPointsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PointsPublic;
+};
+
+export type meReadMyPointsResponse = meReadMyPointsResponses[keyof meReadMyPointsResponses];
+
+export type meReadMyBadgesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/badges';
+};
+
+export type meReadMyBadgesResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserBadgesPublic;
+};
+
+export type meReadMyBadgesResponse = meReadMyBadgesResponses[keyof meReadMyBadgesResponses];
+
+export type privateCreateUserData = {
+    body: PrivateUserCreate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/private/users/';
+};
+
+export type privateCreateUserErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type privateCreateUserError = privateCreateUserErrors[keyof privateCreateUserErrors];
+
+export type privateCreateUserResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserPublic;
+};
+
+export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];

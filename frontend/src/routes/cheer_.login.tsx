@@ -12,7 +12,6 @@ import { AuthField } from "@/cheer/components/auth-field"
 import { Mascot } from "@/cheer/components/mascot"
 import { SocialButtons } from "@/cheer/components/social-buttons"
 import { isLoggedIn } from "@/hooks/useAuth"
-import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/cheer_/login")({
   component: LoginPage,
@@ -26,13 +25,13 @@ export const Route = createFileRoute("/cheer_/login")({
 function LoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [email, setEmail] = useState("")
+  const [id, setId] = useState("")
   const [pw, setPw] = useState("")
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const res = await LoginService.loginAccessToken({
-        body: { username: email.trim(), password: pw },
+      const res = await LoginService.login({
+        body: { username: id.trim(), password: pw },
       })
       localStorage.setItem("access_token", res.data.access_token)
     },
@@ -41,13 +40,13 @@ function LoginPage() {
       toast.success("로그인 완료! 환영해요 📣")
       navigate({ to: "/cheer" })
     },
-    onError: handleError.bind(toast.error),
+    onError: () => toast.error("아이디 또는 비밀번호가 맞지 않아요."),
   })
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!email.trim() || !pw.trim()) {
-      toast.error("이메일과 비밀번호를 입력해주세요.")
+    if (!id.trim() || !pw.trim()) {
+      toast.error("아이디와 비밀번호를 입력해주세요.")
       return
     }
     loginMutation.mutate()
@@ -56,7 +55,7 @@ function LoginPage() {
   return (
     <AuthShell title="다시 만나서 반가워요!" subtitle="로그인하고 오늘의 경기를 응원해요">
       <form onSubmit={submit} className="space-y-3">
-        <AuthField label="이메일" type="email" value={email} onChange={setEmail} placeholder="이메일을 입력하세요" autoComplete="email" />
+        <AuthField label="아이디" value={id} onChange={setId} placeholder="아이디를 입력하세요" autoComplete="username" />
         <AuthField label="비밀번호" type="password" value={pw} onChange={setPw} placeholder="비밀번호를 입력하세요" autoComplete="current-password" />
         <button
           type="submit"
