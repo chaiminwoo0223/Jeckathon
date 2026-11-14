@@ -1,7 +1,7 @@
 """add community and battle
 
 Revision ID: 7aa18cb21bf3
-Revises: 736e752cb199
+Revises: 5e308008edb7
 Create Date: 2026-11-14 15:27:21.754112
 
 """
@@ -12,7 +12,7 @@ import sqlmodel.sql.sqltypes
 
 # revision identifiers, used by Alembic.
 revision = '7aa18cb21bf3'
-down_revision = '736e752cb199'
+down_revision = '5e308008edb7'
 branch_labels = None
 depends_on = None
 
