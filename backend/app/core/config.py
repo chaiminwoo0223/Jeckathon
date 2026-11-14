@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     )
     API_V1_STR: str = "/api/v1"
     AI_API_KEY: str | None = None
+    # 커뮤니티 공간(메타버스) 상태와 워커 간 전달. 로컬 기본값은 compose의 redis 서비스
+    REDIS_URL: str = "redis://localhost:6379/0"
     SECRET_KEY: str
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8

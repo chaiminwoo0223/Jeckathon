@@ -3,7 +3,7 @@
 스포츠 관람 기록 + 응원 커뮤니티 + 데시벨 대결. 기반은 full-stack-fastapi-template(FastAPI·SQLModel·Postgres / React·TanStack·shadcn).
 
 - 명세 정본: [docs/cheer101-spec.md](docs/cheer101-spec.md). 데이터 모델·API 경로·비즈니스 규칙은 여기서 찾는다. 명세와 다르게 구현해야 하면 명세 파일을 같은 커밋에서 고친다.
-- 실행 명령: [development.md](development.md) (`docker compose up -d db mailpit`, `uv run fastapi dev`, `bun run dev`).
+- 실행 명령: [development.md](development.md) (`docker compose up -d db mailpit redis`, `uv run fastapi dev`, `bun run dev`).
 - 범위: 명세 §6의 코어 → 양념 → 스트레치 순. 데모 시나리오는 명세 §7이고, 그 흐름이 돌아가는 게 완료 기준이다.
 
 ## 작업 공간
@@ -13,7 +13,7 @@
 | 역할 | 명세 범위 | 소유 파일 |
 |---|---|---|
 | BE-1 | 모델 User·UserSetting·Team·UserTeam·Match·CheerRecord·Badge·UserBadge·PointTransaction, 인증 스텁, §4.1–4.3(`/me/badges`·`/me/points` 제외), 경기 종료 정산(포인트·요정·배지 평가), 시드 | `backend/app/api/routes/{login,users,teams,matches,me,admin}.py`, `backend/app/initial_data.py`, `backend/app/services/settlement.py` |
-| BE-2 | 모델 Community·CommunityMember·Battle·BattleRecord, §4.4–4.6, `/me/badges`·`/me/points` 조회, 커뮤니티 채팅 | `backend/app/api/routes/{communities,battles,rankings,rewards,chat}.py`, `backend/app/services/battle.py` |
+| BE-2 | 모델 Community·CommunityMember·Battle·BattleRecord, §4.4–4.6, `/me/badges`·`/me/points` 조회, 커뮤니티 채팅 | `backend/app/api/routes/{communities,battles,rankings,rewards,chat,space}.py`, `backend/app/services/{battle,space}.py` |
 | AI | Fortune, §4.7 운세, (양념) 기록 한 줄 평. 모델 API 제공자는 AI 담당이 고른다 | `backend/app/api/routes/fortune.py`, `backend/app/ai/` |
 | FE | 명세 §5 화면 전부, Web Audio 데시벨 측정 | `frontend/` 전체 (생성 파일 제외) |
 
@@ -57,6 +57,25 @@ ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)])
 // 보내기: ws.send(text)  (화면에 직접 추가하지 않음)
 ```
 
+## 커뮤니티 공간 (메타버스, 프론트 연동)
+
+백엔드: `backend/app/api/routes/space.py`, `backend/app/services/space.py`(BE-2). 채팅은 위 채팅 WS를 그대로 쓰고, 공간은 누가 어디 서 있는지와 이모트만 다룬다.
+
+- 주소: `WS /api/v1/communities/{community_id}/space/ws?token=<access_token>`. `community_id`는 `GET /communities/today`의 `id`(UUID). 토큰·호스트는 채팅과 같다.
+- 거부: 토큰이 틀리거나 커뮤니티가 없으면 연결 전에 끊긴다(close code 1008). 이때는 재연결하지 말고 로그인으로 보낸다.
+- 좌표: 칸(grid). 원점 왼쪽 위, `x` 0..19, `y` 0..11 정수(크기는 snapshot `room.w`·`room.h`). 화면은 칸을 컨테이너 크기에 맞춰 늘리고, 칸 이동은 CSS `transition`으로 부드럽게 한다.
+- 받기(server→client), JSON `type`으로 가른다:
+  - `snapshot` (연결 직후 한 번): `{"type":"snapshot","v":1,"me":"<내 user_id>","room":{"id":"<community_id>","w":20,"h":12},"users":[{"user_id","name","avatar_url","x","y"}]}`. 받으면 사람 목록을 통째로 바꾼다.
+  - `join`: `{"type":"join","user":{…users 한 칸…}}`. 이미 있는 사람이면 덮어쓴다(같은 사람이 탭을 더 연 경우).
+  - `leave`: `{"type":"leave","user_id"}`. 그 사람의 마지막 탭이 닫혀야 온다.
+  - `move`: `{"type":"move","user_id","x","y"}`. 내 이동도 서버가 되돌려 준다(서버가 범위 밖 값을 잘라서 보낸다).
+  - `emote`: `{"type":"emote","user_id","emote"}`. 말풍선·애니메이션으로 잠깐 보여 준다(저장 안 함).
+  - `pong`, `error`(`{"type":"error","code":"bad_message"}`).
+- 보내기(client→server): `{"type":"move","x":7,"y":4}`(탭할 때만, 초당 10개 넘는 건 서버가 버린다), `{"type":"emote","emote":"clap"}`(`clap`·`cheer`·`wave`·`fire`, 1초에 1번), `{"type":"ping"}`(25초마다. 60초 동안 아무것도 안 보내면 다른 사람 화면에서 사라진다).
+- 재연결: 끊기면 1·2·4…최대 10초 간격으로 다시 붙고, 새 snapshot으로 통째로 바꾼다. `StrictMode` 개발 모드의 이중 연결은 서버가 탭 수로 세서 문제없다(effect cleanup에서 `ws.close()`).
+- `frontend/src/client/`(생성 클라이언트)에는 WS가 안 들어가므로 메시지 타입은 프론트가 직접 쓴다. 로컬에서 vite proxy로 붙이면 `/api` 항목에 `ws: true`가 있어야 한다.
+- 상태는 Redis에만 있다(재시작하면 비어도 된다). 로컬은 `docker compose up -d redis`, 설정은 `REDIS_URL`(기본 `redis://localhost:6379/0`). Redis가 없어도 서버는 뜨고 이 WS만 실패한다.
+
 ## 키와 환경 파일
 
 - `.env`, `frontend/.env`: git에 올라가 있고 템플릿 기본값(`changethis`)을 그대로 쓴다. 저장소가 PUBLIC이라 실제 비밀값은 여기 넣지 않는다.
@@ -78,6 +97,7 @@ ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)])
 - 화면은 백엔드 이미지에 빌드돼 같은 주소로 나간다(`VITE_API_URL` 비움). 배포마다 migration·시드(`prestart.sh`)가 돈다. 실패하면 워크플로가 빨간불이고 로그 끝에 prestart 로그가 찍힌다.
 - 운영 비밀값(SECRET_KEY, DB·superuser 비밀번호, AI_API_KEY)은 서버 파일에만 있다. 바꿀 일이 있으면 배포 담당(SonAIengine)에게.
 - `deploy/`, `.github/`는 배포 담당 영역이다.
+- 커뮤니티 공간 WS는 Redis가 있어야 한다. 운영 `deploy/home/compose.yml`에 `redis:8-alpine` 서비스와 backend 환경변수 `REDIS_URL: redis://redis:6379/0`이 필요하다(배포 담당에게 요청, 루트 `compose.yml`의 redis 서비스가 예시).
 
 ## Git
 

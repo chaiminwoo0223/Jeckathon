@@ -4,7 +4,7 @@
 
 ## 0. 핵심 아키텍처 결정
 
-- **채팅 외 실시간 미사용.** 데시벨 대결·랭킹 등 채팅을 뺀 전부는 **REST + 폴링(2~3초 간격)** 과 DB 조회로 처리한다. 채팅은 범위에 남기고, 폴링으로 부족하면 그때만 WebSocket을 붙인다(별도 소켓 서버 없이 같은 FastAPI 앱 안에서).
+- **채팅·커뮤니티 공간 외 실시간 미사용.** 데시벨 대결·랭킹 등 나머지는 **REST + 폴링(2~3초 간격)** 과 DB 조회로 처리한다. 채팅과 커뮤니티 공간(메타버스: 접속자 위치·이모트)만 WebSocket이고, 별도 소켓 서버 없이 같은 FastAPI 앱 안에 둔다. 공간 상태와 워커 간 전달은 Redis.
 - **데시벨 대결 = 핫시트/동시참여 혼합.** 측정은 전적으로 **클라이언트(Web Audio API)** 에서 수행하고, 서버는 점수(peak dB)만 받아 저장·집계한다. 서버는 음성을 다루지 않는다.
 - **경기 일정 데이터는 시드(seed) 테이블로 적재.** 외부 API 연동(football-data.org 등)은 시간 남으면 스트레치. 데모 안정성 위해 샘플 경기 데이터를 DB에 미리 넣는다.
 - 인증은 해커톤 범위에서 **소셜 로그인 스텁 or 단순 토큰**으로 최소화. (아래 명세는 `userId`를 인증 컨텍스트에서 획득한다고 가정)
@@ -328,6 +328,7 @@ Fortune {
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
 | WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음). 워커 사이 전달은 Postgres LISTEN/NOTIFY |
+| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스). 20×12 칸 위 접속자 위치·이모트. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간" |
 
 **입장 규칙**
 
@@ -370,6 +371,8 @@ Fortune {
 - `leave`는 멤버가 아니어도 성공한다. 나가도 응원 기록은 그대로이고 입장 시간 안이면 다시 들어올 수 있다.
 - `GET /communities/{id}/members`는 로그인한 누구나 볼 수 있고 `{data, count}`를 입장 순으로 돌려준다. 항목은 `user_id`, `nickname`, `profile_image_url`, `level`, `fairy_type`, `fairy_label`, `joined_at`이다(요정은 §3.2 규칙).
 - 대결(§4.6)을 시작하거나 측정값을 보낼 때 커뮤니티 멤버인지는 검사하지 않는다.
+||||||| parent of ff6f64f (feat(space): Redis 기반 커뮤니티 공간(메타버스) WebSocket 추가)
+| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
 
 ### 4.5 랭킹 (폴링)
 
