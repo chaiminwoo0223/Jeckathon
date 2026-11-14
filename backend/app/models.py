@@ -366,6 +366,70 @@ class CommunityPublic(SQLModel):
     created_at: datetime
 
 
+class CommunityMember(SQLModel, table=True):
+    community_id: uuid.UUID = Field(
+        foreign_key="community.id", primary_key=True, ondelete="CASCADE"
+    )
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", primary_key=True, ondelete="CASCADE"
+    )
+    joined_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class CommunityInfo(SQLModel):
+    """경기별 커뮤니티와 내 입장 상태. 초대장 화면이 쓴다."""
+
+    id: uuid.UUID
+    match_id: uuid.UUID
+    member_count: int
+    joined: bool
+    enter_opens_at: datetime  # 경기 시작 1시간 전
+    can_enter: bool  # 서버 시각 기준 지금 입장 가능한가
+
+
+class CommunityBrief(SQLModel):
+    id: uuid.UUID
+    member_count: int
+    joined: bool
+
+
+class CommunityMineItem(SQLModel):
+    match: MatchDetail
+    cheered_team_id: uuid.UUID
+    community: CommunityBrief
+    enter_opens_at: datetime
+    can_enter: bool
+
+
+class CommunityMineDay(SQLModel):
+    date: date_type  # KST 기준 날짜
+    items: list[CommunityMineItem]
+
+
+class CommunitiesMine(SQLModel):
+    server_now: datetime  # 프론트가 카운트다운을 그릴 때 쓰는 서버 시각
+    count: int
+    days: list[CommunityMineDay]  # 날짜 오름차순, 비어 있으면 신청한 경기가 없다
+
+
+class CommunityMemberPublic(SQLModel):
+    user_id: uuid.UUID
+    nickname: str
+    profile_image_url: str | None
+    level: int
+    fairy_type: FairyType
+    fairy_label: str
+    joined_at: datetime
+
+
+class CommunityMembersPublic(SQLModel):
+    data: list[CommunityMemberPublic]
+    count: int
+
+
 class BattleStatus(enum.StrEnum):
     WAITING = "WAITING"
     ONGOING = "ONGOING"

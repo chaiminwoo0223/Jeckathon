@@ -56,21 +56,35 @@ def build_stats(win: int, draw: int, lose: int) -> StatsPublic:
     )
 
 
+def users_stats(
+    session: Session, user_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, StatsPublic]:
+    """여러 유저의 통계를 쿼리 한 번으로 센다(확정된 기록만). 기록이 없으면 전부 0."""
+    counts: dict[uuid.UUID, dict[CheerResult, int]] = {uid: {} for uid in user_ids}
+    if user_ids:
+        rows = session.exec(
+            select(CheerRecord.user_id, CheerRecord.result, func.count())
+            .where(
+                col(CheerRecord.user_id).in_(user_ids),
+                CheerRecord.result != CheerResult.PENDING,
+            )
+            .group_by(col(CheerRecord.user_id), col(CheerRecord.result))
+        ).all()
+        for uid, result, n in rows:
+            counts[uid][CheerResult(result)] = n
+    return {
+        uid: build_stats(
+            win=c.get(CheerResult.WIN, 0),
+            draw=c.get(CheerResult.DRAW, 0),
+            lose=c.get(CheerResult.LOSE, 0),
+        )
+        for uid, c in counts.items()
+    }
+
+
 def user_stats(session: Session, user_id: uuid.UUID) -> StatsPublic:
     """확정된 응원 기록(PENDING 제외)으로 승/무/패를 센다."""
-    rows = session.exec(
-        select(CheerRecord.result, func.count())
-        .where(
-            CheerRecord.user_id == user_id, CheerRecord.result != CheerResult.PENDING
-        )
-        .group_by(col(CheerRecord.result))
-    ).all()
-    counts = dict(rows)
-    return build_stats(
-        win=counts.get(CheerResult.WIN, 0),
-        draw=counts.get(CheerResult.DRAW, 0),
-        lose=counts.get(CheerResult.LOSE, 0),
-    )
+    return users_stats(session, [user_id])[user_id]
 
 
 def favorite_team(session: Session, user_id: uuid.UUID) -> Team | None:
