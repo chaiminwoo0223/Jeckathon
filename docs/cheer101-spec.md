@@ -242,7 +242,9 @@ Fortune {
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| POST | /auth/login | 소셜 로그인(스텁). `{provider, token}` → `{accessToken, user}` |
+| GET | /auth/check-username?username= | 아이디 중복 체크. `{username, available}` |
+| POST | /auth/signup | 아이디·비밀번호 가입. `{username, password}` → `{accessToken, user}` (중복이면 409) |
+| POST | /auth/login | 아이디·비밀번호 로그인. `{username, password}` → `{accessToken, user}` |
 | GET | /me | 내 프로필 + 통계 요약 (요정 타입, 승률, 레벨, 포인트, 응원팀) |
 | PATCH | /me/profile | `{nickname?, bio?, profileImageUrl?}` |
 | GET | /me/settings | 설정 조회 |
@@ -250,6 +252,15 @@ Fortune {
 | GET | /me/teams | 응원하는 팀 목록 |
 | POST | /me/teams | `{teamId}` 추가 |
 | DELETE | /me/teams/{teamId} | 응원팀 제거 |
+
+**구현 메모 (BE-1)**
+
+- 로그인은 아이디·비밀번호뿐이다(소셜·이메일 없음). 아이디는 영문·숫자·밑줄 4~20자이고 대소문자를 구분하지 않는다(소문자로 저장). 비밀번호는 4자 이상. 응답은 `{access_token, token_type, user}`이고 이후 요청은 `Authorization: Bearer`로 보낸다.
+- 로그인 아이디는 별도 칼럼 없이 `email` 칼럼에 합성해 저장한다(`{username}@users.cheer101.example.com`, 메일은 보내지 않는다). 아이디 중복 체크는 이 칼럼의 unique로 한다. 그래서 `/me`·로그인 응답의 `user`에는 `email`·`username`이 없다. `User`의 이름 필드는 `nickname` 하나뿐이고 템플릿의 `full_name`은 제거했다. 관리자 계정은 템플릿의 `/login/access-token`(이메일)으로 로그인한다.
+- 로그인 실패는 아이디가 없든 비밀번호가 틀리든 같은 400 응답이다.
+- `POST /me/teams`, `DELETE /me/teams/{teamId}`는 갱신된 응원팀 목록 `{data, count}`를 돌려준다. 이미 있는 팀 추가는 그대로 두고, 없는 팀 삭제는 404다.
+- `GET /me`의 `stats`는 CheerRecord(§4.3)가 생기기 전까지 전부 0이고 `fairy_type`은 `NEUTRAL`이다.
+- `nickname`이 비어 있으면 이름, 그것도 없으면 이메일 앞부분으로 채워 응답한다.
 
 **GET /me 응답 예시**
 

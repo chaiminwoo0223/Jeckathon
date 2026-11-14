@@ -86,7 +86,6 @@ def test_reset_password(client: TestClient, db: Session) -> None:
 
     user_create = UserCreate(
         email=email,
-        full_name="Test User",
         password=password,
         is_active=True,
         is_superuser=False,
