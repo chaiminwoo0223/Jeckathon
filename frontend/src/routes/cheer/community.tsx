@@ -723,7 +723,7 @@ function Result({
         <button
           type="button"
           onClick={onBack}
-          className="flex-1 rounded-2xl border-2 py-3.5 text-sm font-extrabold text-[var(--c-ink-soft)]"
+          className="flex-1 rounded-2xl border-2 bg-[var(--c-surface-2)] py-3.5 text-sm font-extrabold text-[var(--c-ink-soft)] transition-all hover:bg-[var(--c-surface)]"
           style={{ borderColor: "var(--c-line)" }}
         >
           커뮤니티로
