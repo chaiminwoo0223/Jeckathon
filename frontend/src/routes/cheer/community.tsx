@@ -32,7 +32,6 @@ import {
   FORTUNES,
   formatKDate,
   formatTime,
-  invitationState,
   type Match,
   pct,
   TEAMS,
@@ -40,7 +39,11 @@ import {
   TODAY_MATCH,
   VICTORY_RANKING,
 } from "@/cheer/data/mock"
-import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
+import {
+  entryState,
+  useAppliedMatches,
+  useJoinCommunity,
+} from "@/cheer/hooks/use-applied-matches"
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
 import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
@@ -86,8 +89,8 @@ function CommunityPage() {
   const [finalPeak, setFinalPeak] = useState(0)
   const { db, peak, status, reset } = useDecibel(stage === "measuring")
 
-  // 서버 대결: 로그인 + 오늘 경기 커뮤니티가 있으면 서버로, 아니면 목데이터로 데모
-  const community = useQuery({
+  // 서버 대결: 입장한 커뮤니티(없으면 오늘 경기 커뮤니티)로 대결한다. 로그인 안 했으면 목데이터로 데모
+  const todayCommunity = useQuery({
     queryKey: ["community", "today"],
     queryFn: async () => (await CommunitiesService.readTodayCommunity()).data,
     enabled: isLoggedIn(),
@@ -127,6 +130,8 @@ function CommunityPage() {
 
   const match = entered?.match ?? TODAY_MATCH
   const cheerTeam = entered?.cheeredTeam ?? TEAMS.arsenal
+  // 입장한 커뮤니티: 응원 스타디움·실시간 채팅이 백엔드 공간 WS에 붙는다(없으면 데모)
+  const communityId = entered?.communityId
 
   // countdown
   useEffect(() => {
@@ -161,12 +166,13 @@ function CommunityPage() {
     reset()
     playWhistle()
     let started: BattleState | null = null
-    if (community.data) {
+    const battleCommunityId = communityId ?? todayCommunity.data?.id
+    if (battleCommunityId) {
       try {
         // 진행 중인 대결이 있으면 서버가 그 대결을 돌려준다(다 같이 같은 대결)
         started = (
           await BattlesService.startBattle({
-            path: { id: community.data.id },
+            path: { id: battleCommunityId },
             body: { duration_sec: BATTLE_SECONDS },
           })
         ).data
@@ -191,6 +197,7 @@ function CommunityPage() {
   if (stage === "measuring")
     return (
       <Measuring
+        communityId={communityId}
         match={match}
         db={db}
         peak={peak}
@@ -222,12 +229,14 @@ function CommunityPage() {
     return (
       <ArenaStage
         onExit={() => setStage("room")}
+        communityId={communityId}
         myNickname={`${cheerTeam.name} 팬`}
         myTeam={{ name: cheerTeam.name, color: cheerTeam.color }}
       />
     )
   return (
     <Room
+      communityId={communityId}
       match={match}
       cheerTeam={cheerTeam}
       onStart={startBattle}
@@ -239,7 +248,12 @@ function CommunityPage() {
 
 /* ---------------- Invite (입장 초대장) ---------------- */
 function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
-  const applied = useAppliedMatches()
+  const { data: applied, isLoading, isError, refetch } = useAppliedMatches()
+  const join = useJoinCommunity()
+  const enter = (am: AppliedMatch) =>
+    join.mutate(am, { onSuccess: () => onEnter(am) })
+  const entering = (am: AppliedMatch) =>
+    join.isPending && join.variables?.matchId === am.matchId
   const [now, setNow] = useState(() => new Date())
 
   // 1분 경계(입장 활성화)를 놓치지 않도록 30초마다 재평가
@@ -250,14 +264,37 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
 
   const items = useMemo(
     () =>
-      applied.map((am) => ({
+      (applied ?? []).map((am) => ({
         am,
-        state: invitationState(am.match.kickoffAt, now),
+        state: entryState(am, now),
       })),
     [applied, now],
   )
   const open = items.filter((i) => i.state.canEnter)
   const upcoming = items.filter((i) => !i.state.canEnter)
+
+  if (isLoading)
+    return (
+      <p className="py-20 text-center text-sm font-bold text-[var(--c-muted)]">
+        관람 신청 내역을 불러오는 중…
+      </p>
+    )
+
+  if (isError)
+    return (
+      <div className="cheer-reveal grid min-h-[50vh] place-content-center gap-3 text-center">
+        <p className="text-sm font-bold text-[var(--c-ink-soft)]">
+          관람 신청 내역을 불러오지 못했어요
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mx-auto rounded-full bg-[var(--c-primary)] px-5 py-2 text-sm font-extrabold text-white"
+        >
+          다시 시도
+        </button>
+      </div>
+    )
 
   // 신청 내역 없음 → 캘린더로 안내
   if (items.length === 0) {
@@ -274,7 +311,7 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
           <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
             캘린더에서 보고 싶은 경기를 골라 응원 신청을 하면
             <br />
-            경기 시작 1시간 전에 입장 초대장이 도착해요!
+            경기 시작 3시간 전에 입장 초대장이 도착해요!
           </p>
           <Link
             to="/cheer/calendar"
@@ -296,7 +333,7 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
             내 관람 신청 내역
           </h1>
           <p className="text-sm text-[var(--c-muted)]">
-            경기 시작 1시간 전부터 입장할 수 있어요
+            경기 시작 3시간 전부터 입장할 수 있어요
           </p>
         </div>
         <Link
@@ -321,7 +358,8 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
                 key={am.id}
                 applied={am}
                 state={state}
-                onEnter={() => onEnter(am)}
+                onEnter={() => enter(am)}
+                entering={entering(am)}
               />
             ))}
           </div>
@@ -340,7 +378,8 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
                 key={am.id}
                 applied={am}
                 state={state}
-                onEnter={() => onEnter(am)}
+                onEnter={() => enter(am)}
+                entering={entering(am)}
               />
             ))}
           </div>
@@ -352,12 +391,14 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
 
 /* ---------------- Room ---------------- */
 function Room({
+  communityId,
   match,
   cheerTeam,
   onStart,
   onLeave,
   onEnterArena,
 }: {
+  communityId?: string
   match: Match
   cheerTeam: Team
   onStart: () => void
@@ -395,7 +436,7 @@ function Room({
         <SectionTitle icon="📺">경기 생중계</SectionTitle>
         <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
           <VideoStream home={match.home} away={match.away} />
-          <LiveChat heightClass="h-[300px]" />
+          <LiveChat heightClass="h-[300px]" communityId={communityId} />
         </div>
       </div>
 
@@ -426,7 +467,7 @@ function Room({
       <button
         type="button"
         onClick={onEnterArena}
-        className="flex w-full items-center justify-between rounded-[26px] bg-[var(--c-ink)] p-6 text-left text-white shadow-[var(--shadow-float)] transition-transform hover:scale-[1.01]"
+        className="flex w-full items-center justify-between rounded-[26px] bg-[var(--c-arena)] p-6 text-left text-white shadow-[var(--shadow-float)] transition-transform hover:scale-[1.01]"
       >
         <div>
           <h2 className="text-xl font-black">🏟️ 응원 스타디움 입장</h2>
@@ -522,6 +563,7 @@ function MiniRanking({
 
 /* ---------------- Measuring ---------------- */
 function Measuring({
+  communityId,
   match,
   db,
   peak,
@@ -531,6 +573,7 @@ function Measuring({
   myRank: serverMyRank,
   onCancel,
 }: {
+  communityId?: string
   match: Match
   db: number
   peak: number
@@ -653,7 +696,7 @@ function Measuring({
               </ul>
             </SectionCard>
           )}
-          <LiveChat heightClass="h-[200px]" />
+          <LiveChat heightClass="h-[200px]" communityId={communityId} />
         </div>
       </div>
     </div>

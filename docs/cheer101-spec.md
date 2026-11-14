@@ -305,6 +305,11 @@ Fortune {
 
 - `GET /me/share-card`: 닉네임·프로필 이미지, 요정(`fairy_type`·`fairy_label`), `stats`(`total`이 경기수, `/me`와 같은 규칙), `favorite_team`을 돌려준다(로그인 필요). **최애팀**은 응원 기록(진행 전 포함)에서 가장 많이 응원한 팀이고, 같은 횟수면 가장 최근에 응원한 팀이다. 응원 기록이 없으면 응원팀 설정(`/me/teams`)의 첫 팀, 그것도 없으면 `null`이다. 카드 이미지는 프론트가 그린다.
 
+**구현 메모 (BE-2)**
+
+- `GET /me/points?page=&size=`: 1부터 시작하는 `page`, 기본 `size` 20(최대 100). 최신순이고 로그인이 필요하다. 응답은 `{data: [{id, amount, reason, related_id, created_at}], count, page, size, total_points}`이고 `count`는 전체 내역 수다. `reason`은 `MATCH_RESULT`(`related_id`=matchId) 또는 `DECIBEL_TOP3`(`related_id`=battleId)다.
+- `GET /me/badges`: 획득한 배지를 최근 획득 순으로 돌려준다(로그인 필요). 응답은 `{data: [{code, name, description, icon_url, acquired_at}], count}`다.
+
 **경기 종료 처리 (내부 배치/관리자 트리거)**
 
 - `PATCH /admin/matches/{id}/finish` `{homeScore, awayScore}` 호출 시:
@@ -327,13 +332,12 @@ Fortune {
 | POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
-| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음). 워커 사이 전달은 Postgres LISTEN/NOTIFY |
-| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스). 20×12 칸 위 접속자 위치·이모트. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간" |
+| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스)과 실시간 채팅을 한 소켓으로. 20×12 칸 위 접속자 위치·이모트·채팅(방마다 최근 50개). 입장한 멤버만. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
 
 **입장 규칙**
 
 - 응원 신청(§4.3 `POST /matches/{id}/cheer`)한 경기의 커뮤니티에만 입장할 수 있다.
-- 입장은 **경기 시작(`kickoffAt`) 1시간 전부터 경기 종료(`FINISHED`)까지** 가능하다. 경기 상태는 자동으로 LIVE가 되지 않으므로(스케줄러 없음) 상태가 아니라 **시간**으로 판단한다: `now >= kickoffAt - 1시간 && status != FINISHED`.
+- 입장은 **경기 시작(`kickoffAt`) 3시간 전부터 경기 종료(`FINISHED`)까지** 가능하다. 경기 상태는 자동으로 LIVE가 되지 않으므로(스케줄러 없음) 상태가 아니라 **시간**으로 판단한다: `now >= kickoffAt - 3시간 && status != FINISHED`.
 - 이 판단은 서버가 하고 응답에 담는다(`enterOpensAt`, `canEnter`). 브라우저 시계에 의존하지 않고, 프론트는 `serverNow`로 카운트다운만 그린다. 버튼 비활성화만으로는 API 직접 호출을 막을 수 없으므로 `join`도 같은 규칙으로 서버에서 거절한다.
 - `join` 거절: 입장 시간 전 → 403 `NOT_OPEN_YET`(`enterOpensAt` 포함), 응원 신청을 하지 않은 경기 → 403 `NOT_CHEERED`, 종료된 경기 → 409 `MATCH_FINISHED`. 이미 멤버면 그대로 성공한다(멱등).
 - 커뮤니티는 경기당 1개이며, 필요할 때 처음 만든다(동시 요청이어도 중복 생성되지 않는다).
@@ -371,8 +375,6 @@ Fortune {
 - `leave`는 멤버가 아니어도 성공한다. 나가도 응원 기록은 그대로이고 입장 시간 안이면 다시 들어올 수 있다.
 - `GET /communities/{id}/members`는 로그인한 누구나 볼 수 있고 `{data, count}`를 입장 순으로 돌려준다. 항목은 `user_id`, `nickname`, `profile_image_url`, `level`, `fairy_type`, `fairy_label`, `joined_at`이다(요정은 §3.2 규칙).
 - 대결(§4.6)을 시작하거나 측정값을 보낼 때 커뮤니티 멤버인지는 검사하지 않는다.
-||||||| parent of ff6f64f (feat(space): Redis 기반 커뮤니티 공간(메타버스) WebSocket 추가)
-| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
 
 ### 4.5 랭킹 (폴링)
 
@@ -413,7 +415,8 @@ Fortune {
 - `endsAt` 지난 뒤 첫 `GET /battles/{id}` or `/result` 호출 시 서버가 status=FINISHED 전환(지연 정산). 별도 스케줄러 불필요.
 - 종료 시 peakDb 상위 3명에게 포인트(100/50/30) 지급 + PointTransaction 기록.
 - `maxPlayers`(5) 초과 입장 불가.
-- 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants}`, 종료 전이면 409. `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
+- 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants, my_points}`, 종료 전이면 409. `top3[]` 각 항목에는 실제로 받은 포인트 `points`가 들어 있고(PointTransaction에서 읽는다), `my_points`는 내가 받은 포인트다(TOP3 밖이면 0). `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
+- 구현 메모 (정산): `endsAt`이 지난 뒤 처음 오는 `GET /battles/{id}`, `/result`, `POST /battles/{id}/records` 중 하나가 정산한다. 대결 행을 잠그고(`FOR UPDATE`) 다시 읽어 ONGOING을 본 요청 하나만 정산하므로 동시에 폴링해도 두 번 지급되지 않는다. peakDb 상위 3명에게 100/50/30을 `services/settlement.py`의 `grant_points(reason=DECIBEL_TOP3, related_id=battleId)`로 지급하고(3명 미만이면 있는 사람만), 참가자 전원을 `evaluate_badges(peak_db=)`로 데시벨 마스터 평가한다. 상태 전환·지급·배지는 한 트랜잭션이다. 기록 제출은 같은 행을 공유 잠금(`FOR SHARE`)으로 다시 읽고 `endsAt` 전인지 확인하므로, 정산과 겹치면 정산 쪽이 그 제출의 커밋을 기다려 순위에 반영하거나 제출이 409가 된다(정산 뒤에 기록이 끼어들지 않는다).
 
 ### 4.7 운세 (AI)
 
@@ -468,7 +471,7 @@ Fortune {
 ## 7. 데모 시나리오 (심사용 3분)
 
 1. 캘린더에서 오늘 경기(두산 vs LG) 선택 → LG 응원 설정
-2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정 (입장은 경기 시작 1시간 전부터라, 시연 경기는 킥오프가 1시간 이내여야 한다)
+2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정 (입장은 경기 시작 3시간 전부터라, 시연 경기는 킥오프가 3시간 이내여야 한다)
 3. TOP3 + 포인트 지급 화면
 4. `admin/finish`로 경기 종료 발동 → 승리 결과·포인트·요정 갱신
 5. 마이페이지에서 승률·요정·배지 확인 → SNS 공유 카드로 마무리

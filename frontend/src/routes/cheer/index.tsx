@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Bell, ChevronRight, MessageCircle } from "lucide-react"
-import { Mascot } from "@/cheer/components/mascot"
+import { ChevronRight, MessageCircle } from "lucide-react"
 import { Avatar, Pill, RankBadge, SectionCard, SectionTitle } from "@/cheer/components/primitives"
 import {
   COMMUNITY_FEED,
@@ -21,11 +20,7 @@ function HomePage() {
     <div className="cheer-reveal space-y-6">
       {/* top bar */}
       <div className="flex items-center justify-between">
-        <Pill>오늘의 커뮤니티</Pill>
-        <button type="button" className="relative grid size-10 place-items-center rounded-full bg-[var(--c-surface)] shadow-sm">
-          <Bell size={18} className="text-[var(--c-ink-soft)]" />
-          <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-[var(--c-lose)]" />
-        </button>
+        <Pill>오늘의 응원</Pill>
       </div>
 
       {/* hero banner */}
@@ -42,12 +37,8 @@ function HomePage() {
               to="/cheer/community"
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[var(--c-primary-700)] shadow-md transition-transform hover:scale-[1.03]"
             >
-              커뮤니티 입장하기 <ChevronRight size={16} />
+              응원하러 가기 <ChevronRight size={16} />
             </Link>
-          </div>
-          <div className="relative shrink-0">
-            <span className="absolute -left-4 top-0 text-sm font-bold text-white/90">오늘도 힘내요!</span>
-            <Mascot size="lg" float flag />
           </div>
         </div>
         <div className="pointer-events-none absolute -right-6 -top-10 size-40 rounded-full bg-white/10 blur-2xl" />
@@ -85,7 +76,7 @@ function HomePage() {
               </Link>
             }
           >
-            실시간 커뮤니티
+            실시간 응원
           </SectionTitle>
           <ul className="space-y-3">
             {COMMUNITY_FEED.map((m) => (
@@ -107,12 +98,12 @@ function HomePage() {
             <h4 className="text-lg font-black leading-snug">
               오늘도 응원하고,<br />랭킹에 도전해보세요!
             </h4>
-            <p className="mt-1 text-sm text-white/80">커뮤니티에서 함께하는 응원이 더 재밌어요</p>
+            <p className="mt-1 text-sm text-white/80">함께하는 응원이 더 재밌어요</p>
             <Link
               to="/cheer/community"
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-extrabold text-[var(--c-primary-700)]"
             >
-              커뮤니티 가기 <ChevronRight size={15} />
+              응원하러 가기 <ChevronRight size={15} />
             </Link>
           </div>
         </div>
@@ -166,9 +157,6 @@ function RankingCard({
           </li>
         ))}
       </ul>
-      <button type="button" className="mt-3 w-full rounded-xl py-2 text-xs font-bold text-[var(--c-ink-soft)] hover:bg-[var(--c-surface-2)]">
-        전체 랭킹 보기 →
-      </button>
     </SectionCard>
   )
 }

@@ -12,7 +12,6 @@ export type UserTableData = UserPublic & {
 
 export const columns: ColumnDef<DataTableFeatures, UserTableData>[] = [
   {
-    // User에 full_name이 없어져(백엔드 #11) 이메일 칸에 You 표시를 합쳤다
     accessorKey: "email",
     header: "Email",
     cell: ({ row }) => (

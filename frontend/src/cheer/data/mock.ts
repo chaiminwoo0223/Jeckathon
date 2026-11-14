@@ -76,21 +76,73 @@ export const TEAMS: Record<string, Team> = {
 
 export const ALL_TEAMS = Object.values(TEAMS)
 
+// ---------- 랜덤 목업 헬퍼 ----------
+// "내" 프로필(마이페이지·설정)의 값은 고정하지 않고 페이지 로드마다 랜덤으로 뽑는다.
+// 모듈 로드 시 한 번 계산하므로 한 세션 안에서는 값이 바뀌지 않는다(새로고침 때 갱신).
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+const NICKNAME_POOL = [
+  "뚜비응원단",
+  "응원요정지노",
+  "열혈직관러",
+  "데시벨장인",
+  "구름이팬클럽",
+  "골세리머니",
+  "후반전의강자",
+]
+const BIO_POOL = [
+  "우리 팀이 이기는 날이 제일 행복해요 💜",
+  "직관 가면 안 지는 징크스가 있어요 😎",
+  "소리 하나는 자신 있습니다 📢",
+  "비가 와도 응원은 쉬지 않아요 🌧️",
+  "역전골의 짜릿함에 중독됐어요 ⚽",
+  "끝날 때까지 끝난 게 아니다! 🔥",
+  "오늘도 목이 터져라 응원합니다 🎉",
+]
+const LEVEL_TITLE_POOL = [
+  "열정 응원러",
+  "꾸준 응원러",
+  "승리 요정",
+  "데시벨 마스터",
+  "응원 리더",
+  "신입 응원러",
+]
+const STYLE_META = [
+  { label: "열혈팬", emoji: "🔥" },
+  { label: "분석왕", emoji: "📊" },
+  { label: "데시벨러", emoji: "📢" },
+]
+
+function randomMyTeams(): Team[] {
+  return shuffle(ALL_TEAMS).slice(0, randInt(1, 2))
+}
+
 // ---------- Current user ----------
+const _myTeams = randomMyTeams()
+
 export const ME = {
-  id: 1,
-  nickname: "뚜비응원단",
-  bio: "아스널이 이기는 날이 제일 행복해요 💜",
-  level: 12,
-  levelTitle: "열정 응원러",
-  totalPoints: 3820,
-  teams: [TEAMS.arsenal, TEAMS.tottenham],
-  favoriteTeam: TEAMS.arsenal,
-  style: [
-    { label: "열혈팬", value: 92, emoji: "🔥" },
-    { label: "분석왕", value: 64, emoji: "📊" },
-    { label: "데시벨러", value: 87, emoji: "📢" },
-  ],
+  id: 1, // id는 본인 식별용이라 고정 (isOwner 판별에 사용)
+  nickname: pick(NICKNAME_POOL),
+  bio: pick(BIO_POOL),
+  level: randInt(5, 30),
+  levelTitle: pick(LEVEL_TITLE_POOL),
+  totalPoints: randInt(500, 9000),
+  teams: _myTeams,
+  favoriteTeam: _myTeams[0],
+  style: STYLE_META.map((s) => ({ ...s, value: randInt(40, 99) })),
 }
 
 // ---------- Matches ----------
@@ -152,42 +204,25 @@ export const MATCH_DAYS: Record<string, number> = {
 export const TODAY_MATCH = MATCHES[0] // 토트넘 vs 아스널
 
 // ---------- 관람 신청 (초대장) ----------
-// 유저가 "이 경기를 보러 가겠다"고 신청한 내역. 경기 1시간 전부터 입장 초대장이 활성화된다.
+// 캘린더에서 응원 신청한 경기. 경기 3시간 전부터 입장 초대장이 활성화된다.
+// 데이터는 GET /communities/mine (hooks/use-applied-matches.ts 가 이 모양으로 바꾼다).
 export interface AppliedMatch {
-  id: number // 신청 식별자 = matchId 재사용
+  id: number // 화면용 숫자 id (목 타입 호환). API 호출에는 matchId·communityId 를 쓴다
+  matchId: string
   match: Match
   cheeredTeam: Team
-}
-
-export const ENTRY_WINDOW_MIN = 60 // 경기 시작 N분 전부터 입장 가능
-const MATCH_DURATION_MIN = 150 // 킥오프 후 이 시간까지는 입장 유지(대략 경기 길이)
-
-// 데모 안정성용 시드. 킥오프를 "현재 시각 기준 상대값"으로 만들어
-// 언제 시연하든 "활성 초대장 / 잠긴 초대장" 상태를 모두 재현한다.
-export function seedAppliedMatches(now: Date = new Date()): AppliedMatch[] {
-  const at = (minFromNow: number) => new Date(now.getTime() + minFromNow * 60_000).toISOString()
-  return [
-    // 40분 뒤 → 1시간 이내 → 입장 가능
-    { id: 9001, cheeredTeam: TEAMS.arsenal, match: { id: 9001, home: TEAMS.tottenham, away: TEAMS.arsenal, league: "프리미어리그", kickoffAt: at(40), status: "SCHEDULED" } },
-    // 4시간 뒤 → 아직 잠김
-    { id: 9002, cheeredTeam: TEAMS.liverpool, match: { id: 9002, home: TEAMS.mancity, away: TEAMS.liverpool, league: "프리미어리그", kickoffAt: at(260), status: "SCHEDULED" } },
-    // 내일 → 잠김
-    { id: 9003, cheeredTeam: TEAMS.barcelona, match: { id: 9003, home: TEAMS.realmadrid, away: TEAMS.barcelona, league: "라리가", kickoffAt: at(1500), status: "SCHEDULED" } },
-  ]
+  venue: string // "잠실"
+  communityId: string
+  memberCount: number
+  joined: boolean // 이미 커뮤니티에 입장했는지
+  enterOpensAt: string // ISO, 서버가 정한 입장 시작 시각 (경기 3시간 전)
+  clockOffsetMs: number // 서버 시각 - 브라우저 시각 (입장 시각 비교용)
 }
 
 export interface InvitationState {
-  canEnter: boolean // 입장 버튼 활성화 여부 (경기 1시간 전 ~ 경기 종료)
-  started: boolean // 킥오프가 지났는지
-  minutesUntil: number // 킥오프까지 남은 분 (음수면 이미 시작)
-}
-
-export function invitationState(kickoffAt: string, now: Date = new Date()): InvitationState {
-  const diffMs = new Date(kickoffAt).getTime() - now.getTime()
-  const minutesUntil = Math.ceil(diffMs / 60_000)
-  const started = diffMs <= 0
-  const canEnter = minutesUntil <= ENTRY_WINDOW_MIN && diffMs > -MATCH_DURATION_MIN * 60_000
-  return { canEnter, started, minutesUntil }
+  canEnter: boolean // 입장 버튼 활성화 여부 (경기 3시간 전 ~ 경기 종료)
+  started: boolean // 경기 시작 시각이 지났는지
+  minutesUntil: number // 경기 시작까지 남은 분 (음수면 이미 시작)
 }
 
 // 킥오프까지 남은 시간을 사람이 읽는 문구로. (양수 분 기준)
@@ -325,20 +360,32 @@ export const MY_RECORDS: CheerRecord[] = [
   },
 ]
 
-// 시즌 통계 (목업 기준 42경기)
-export const SEASON_STATS = { total: 42, win: 28, draw: 3, lose: 13 }
+// 시즌 통계 — 승/무/패를 랜덤으로 뽑고 total은 합으로 맞춘다 (로드마다 랜덤)
+function randomSeasonStats() {
+  const win = randInt(5, 35)
+  const draw = randInt(0, 8)
+  const lose = randInt(3, 20)
+  return { total: win + draw + lose, win, draw, lose }
+}
+export const SEASON_STATS = randomSeasonStats()
 
 // ---------- Badges ----------
-export const BADGES: Badge[] = [
-  { code: "VICTORY_FAIRY", name: "승리요정", desc: "승률 60% 이상", emoji: "👑", acquired: true },
-  { code: "DEFEAT_FAIRY", name: "패배요정", desc: "패배율 30% 이상", emoji: "🌧️", acquired: true },
-  { code: "WIN_STREAK_3", name: "연승러", desc: "3연승 달성", emoji: "🔥", acquired: true },
-  { code: "DECIBEL_MASTER", name: "데시벨 마스터", desc: "최고 110dB 이상", emoji: "📢", acquired: true },
-  { code: "STEADY_FAN", name: "꾸준한 응원단", desc: "10경기 이상", emoji: "📅", acquired: true },
-  { code: "NIGHT_OWL", name: "새벽 직관러", desc: "새벽 경기 5회", emoji: "🦉", acquired: false },
-  { code: "ANALYST", name: "분석왕", desc: "예측 적중 20회", emoji: "🧠", acquired: false },
-  { code: "LOUDEST", name: "오늘의 응원왕", desc: "대결 1위", emoji: "🏆", acquired: true },
+// 배지 메타는 고정, 획득 여부(acquired)만 랜덤 (내 프로필 ME_PROFILE 기준).
+// 다른 유저 프로필은 badgesWith(codes)로 acquired를 다시 계산하므로 영향 없음.
+const BADGE_META: Omit<Badge, "acquired">[] = [
+  { code: "VICTORY_FAIRY", name: "승리요정", desc: "승률 60% 이상", emoji: "👑" },
+  { code: "DEFEAT_FAIRY", name: "패배요정", desc: "패배율 30% 이상", emoji: "🌧️" },
+  { code: "WIN_STREAK_3", name: "연승러", desc: "3연승 달성", emoji: "🔥" },
+  { code: "DECIBEL_MASTER", name: "데시벨 마스터", desc: "최고 110dB 이상", emoji: "📢" },
+  { code: "STEADY_FAN", name: "꾸준한 응원단", desc: "10경기 이상", emoji: "📅" },
+  { code: "NIGHT_OWL", name: "새벽 직관러", desc: "새벽 경기 5회", emoji: "🦉" },
+  { code: "ANALYST", name: "분석왕", desc: "예측 적중 20회", emoji: "🧠" },
+  { code: "LOUDEST", name: "오늘의 응원왕", desc: "대결 1위", emoji: "🏆" },
 ]
+export const BADGES: Badge[] = BADGE_META.map((b) => ({
+  ...b,
+  acquired: Math.random() < 0.55,
+}))
 
 // ---------- Rankings ----------
 export const VICTORY_RANKING: RankingEntry[] = [
@@ -504,10 +551,11 @@ function rec(
 }
 
 // 본인 프로필 (기존 ME + 시즌 데이터 결합)
+// records는 섞어서 "최근 응원한 경기"가 로드마다 다른 순서로 보이게 한다.
 export const ME_PROFILE: PublicProfile = {
   ...ME,
   stats: SEASON_STATS,
-  records: MY_RECORDS,
+  records: shuffle(MY_RECORDS),
   badges: BADGES,
 }
 

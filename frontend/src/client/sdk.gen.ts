@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { adminFinishMatchData, adminFinishMatchErrors, adminFinishMatchResponses, battlesReadBattleData, battlesReadBattleErrors, battlesReadBattleResponses, battlesReadBattleResultData, battlesReadBattleResultErrors, battlesReadBattleResultResponses, battlesStartBattleData, battlesStartBattleErrors, battlesStartBattleResponses, battlesSubmitRecordData, battlesSubmitRecordErrors, battlesSubmitRecordResponses, communitiesJoinCommunityData, communitiesJoinCommunityErrors, communitiesJoinCommunityResponses, communitiesLeaveCommunityData, communitiesLeaveCommunityErrors, communitiesLeaveCommunityResponses, communitiesReadCommunityMembersData, communitiesReadCommunityMembersErrors, communitiesReadCommunityMembersResponses, communitiesReadMatchCommunityData, communitiesReadMatchCommunityErrors, communitiesReadMatchCommunityResponses, communitiesReadMyCommunitiesData, communitiesReadMyCommunitiesResponses, communitiesReadTodayCommunityData, communitiesReadTodayCommunityResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginCheckUsernameData, loginCheckUsernameErrors, loginCheckUsernameResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLoginData, loginLoginErrors, loginLoginResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginSignupData, loginSignupErrors, loginSignupResponses, loginTestTokenData, loginTestTokenResponses, matchesCheerMatchData, matchesCheerMatchErrors, matchesCheerMatchResponses, matchesReadMatchData, matchesReadMatchErrors, matchesReadMatchesByMonthData, matchesReadMatchesByMonthErrors, matchesReadMatchesByMonthResponses, matchesReadMatchesTodayData, matchesReadMatchesTodayResponses, matchesReadMatchResponses, meAddMyTeamData, meAddMyTeamErrors, meAddMyTeamResponses, meReadMeData, meReadMeResponses, meReadMyBadgesData, meReadMyBadgesResponses, meReadMyPointsData, meReadMyPointsErrors, meReadMyPointsResponses, meReadMyRecordsData, meReadMyRecordsErrors, meReadMyRecordsResponses, meReadMyStatsData, meReadMyStatsResponses, meReadMyTeamsData, meReadMyTeamsResponses, meReadSettingsData, meReadSettingsResponses, meReadShareCardData, meReadShareCardResponses, meRemoveMyTeamData, meRemoveMyTeamErrors, meRemoveMyTeamResponses, meUpdateProfileData, meUpdateProfileErrors, meUpdateProfileResponses, meUpdateSettingsData, meUpdateSettingsErrors, meUpdateSettingsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, teamsReadTeamsData, teamsReadTeamsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { adminFinishMatchData, adminFinishMatchErrors, adminFinishMatchResponses, battlesReadBattleData, battlesReadBattleErrors, battlesReadBattleResponses, battlesReadBattleResultData, battlesReadBattleResultErrors, battlesReadBattleResultResponses, battlesStartBattleData, battlesStartBattleErrors, battlesStartBattleResponses, battlesSubmitRecordData, battlesSubmitRecordErrors, battlesSubmitRecordResponses, communitiesJoinCommunityData, communitiesJoinCommunityErrors, communitiesJoinCommunityResponses, communitiesLeaveCommunityData, communitiesLeaveCommunityErrors, communitiesLeaveCommunityResponses, communitiesReadCommunityMembersData, communitiesReadCommunityMembersErrors, communitiesReadCommunityMembersResponses, communitiesReadMatchCommunityData, communitiesReadMatchCommunityErrors, communitiesReadMatchCommunityResponses, communitiesReadMyCommunitiesData, communitiesReadMyCommunitiesResponses, communitiesReadTodayCommunityData, communitiesReadTodayCommunityResponses, fortuneReadFortuneData, fortuneReadFortuneErrors, fortuneReadFortuneResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginCheckUsernameData, loginCheckUsernameErrors, loginCheckUsernameResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLoginData, loginLoginErrors, loginLoginResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginSignupData, loginSignupErrors, loginSignupResponses, loginTestTokenData, loginTestTokenResponses, matchesCheerMatchData, matchesCheerMatchErrors, matchesCheerMatchResponses, matchesReadMatchData, matchesReadMatchErrors, matchesReadMatchesByMonthData, matchesReadMatchesByMonthErrors, matchesReadMatchesByMonthResponses, matchesReadMatchesTodayData, matchesReadMatchesTodayResponses, matchesReadMatchResponses, meAddMyTeamData, meAddMyTeamErrors, meAddMyTeamResponses, meReadMeData, meReadMeResponses, meReadMyBadgesData, meReadMyBadgesResponses, meReadMyPointsData, meReadMyPointsErrors, meReadMyPointsResponses, meReadMyRecordsData, meReadMyRecordsErrors, meReadMyRecordsResponses, meReadMyStatsData, meReadMyStatsResponses, meReadMyTeamsData, meReadMyTeamsResponses, meReadSettingsData, meReadSettingsResponses, meReadShareCardData, meReadShareCardResponses, meRemoveMyTeamData, meRemoveMyTeamErrors, meRemoveMyTeamResponses, meUpdateProfileData, meUpdateProfileErrors, meUpdateProfileResponses, meUpdateSettingsData, meUpdateSettingsErrors, meUpdateSettingsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, rankingsReadDefeatRankingData, rankingsReadDefeatRankingErrors, rankingsReadDefeatRankingResponses, rankingsReadVictoryRankingData, rankingsReadVictoryRankingErrors, rankingsReadVictoryRankingResponses, teamsReadTeamsData, teamsReadTeamsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -720,7 +720,7 @@ export class CommunitiesService {
     /**
      * Join Community
      *
-     * 입장(초대장 → 입장). 응원 신청한 경기만, 경기 시작 1시간 전부터 종료 전까지 가능하다.
+     * 입장(초대장 → 입장). 응원 신청한 경기만, 경기 시작 3시간 전부터 종료 전까지 가능하다.
      * 이미 멤버면 그대로 성공한다.
      */
     public static joinCommunity<ThrowOnError extends boolean = true>(options: Options<communitiesJoinCommunityData, ThrowOnError>) {
@@ -836,6 +836,51 @@ export class BattlesService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/battles/{id}/result',
+            ...options
+        });
+    }
+}
+
+export class FortuneService {
+    /**
+     * Read Fortune
+     *
+     * 경기 당일 응원팀 운세. 두 팀 선수의 생년월일로 등급·선수 하이라이트를 계산하고
+     * 문구는 시드 풀에서 고른다. 같은 날 같은 팀은 항상 같은 운세이고 DB에 저장하지 않는다
+     * (규칙은 명세 §4.7, AI 연동은 후속).
+     */
+    public static readFortune<ThrowOnError extends boolean = true>(options: Options<fortuneReadFortuneData, ThrowOnError>) {
+        return (options.client ?? client).get<fortuneReadFortuneResponses, fortuneReadFortuneErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/matches/{id}/fortune',
+            ...options
+        });
+    }
+}
+
+export class RankingsService {
+    /**
+     * Read Victory Ranking
+     *
+     * 오늘의 승리요정 랭킹(승률 내림차순). `date`는 KST 기준이고 생략하면 오늘이다.
+     */
+    public static readVictoryRanking<ThrowOnError extends boolean = true>(options?: Options<rankingsReadVictoryRankingData, ThrowOnError>) {
+        return (options?.client ?? client).get<rankingsReadVictoryRankingResponses, rankingsReadVictoryRankingErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/rankings/victory',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Defeat Ranking
+     *
+     * 오늘의 패배요정 랭킹(패배율 내림차순). `date`는 KST 기준이고 생략하면 오늘이다.
+     */
+    public static readDefeatRanking<ThrowOnError extends boolean = true>(options?: Options<rankingsReadDefeatRankingData, ThrowOnError>) {
+        return (options?.client ?? client).get<rankingsReadDefeatRankingResponses, rankingsReadDefeatRankingErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/rankings/defeat',
             ...options
         });
     }
