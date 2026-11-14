@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
   ArrowLeft,
@@ -8,7 +9,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ArenaStage } from "@/cheer/arena/arena-stage"
 import { Confetti } from "@/cheer/components/confetti"
 import { DecibelMeter } from "@/cheer/components/decibel-meter"
@@ -43,14 +44,39 @@ import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
 import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
+import {
+  type BattleResult,
+  type BattleState,
+  BattlesService,
+  CommunitiesService,
+  type LeaderboardEntry,
+} from "@/client"
+import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/cheer/community")({
   component: CommunityPage,
 })
 
 type Stage = "invite" | "room" | "measuring" | "result" | "arena"
+type Player = {
+  userId: string | number
+  nickname: string
+  peakDb: number
+  emoji: string
+  me?: boolean
+}
 const BATTLE_SECONDS = 20
 const TARGET_DB = 90
+const SUBMIT_MS = 1000 // 측정 중 내 최고값을 서버로 보내는 간격
+const EMOJIS = ["😎", "🐰", "🔥", "🧞", "🐶"]
+
+const toPlayer = (e: LeaderboardEntry, myRank?: number | null): Player => ({
+  userId: e.user_id,
+  nickname: e.nickname,
+  peakDb: e.peak_db,
+  emoji: EMOJIS[(e.rank - 1) % EMOJIS.length],
+  me: e.rank === myRank,
+})
 
 function CommunityPage() {
   const [stage, setStage] = useState<Stage>("invite")
@@ -59,13 +85,51 @@ function CommunityPage() {
   const [finalPeak, setFinalPeak] = useState(0)
   const { db, peak, status, reset } = useDecibel(stage === "measuring")
 
+  // 서버 대결: 로그인 + 오늘 경기 커뮤니티가 있으면 서버로, 아니면 목데이터로 데모
+  const community = useQuery({
+    queryKey: ["community", "today"],
+    queryFn: async () => (await CommunitiesService.readTodayCommunity()).data,
+    enabled: isLoggedIn(),
+    retry: 1,
+  })
+  const [battle, setBattle] = useState<BattleState | null>(null)
+  const peakRef = useRef(0)
+  peakRef.current = peak
+
+  // 측정 중 내 최고값을 계속 보내고(서버가 max만 보관), 응답 리더보드로 실시간 순위를 그린다
+  const battleId = battle?.id
+  useEffect(() => {
+    if (stage !== "measuring" || !battleId) return
+    const id = setInterval(async () => {
+      if (peakRef.current <= 0) return
+      try {
+        const { data } = await BattlesService.submitRecord({
+          path: { id: battleId },
+          body: { peak_db: peakRef.current },
+        })
+        setBattle(data)
+      } catch {
+        // 409(이미 종료) 등은 무시: 결과 화면에서 서버 기록을 읽는다
+      }
+    }, SUBMIT_MS)
+    return () => clearInterval(id)
+  }, [stage, battleId])
+
+  const battleResult = useQuery({
+    queryKey: ["battleResult", battleId],
+    queryFn: async () =>
+      (await BattlesService.readBattleResult({ path: { id: battleId! } })).data,
+    enabled: stage === "result" && !!battleId,
+    retry: 5, // 로컬 타이머가 서버 endsAt보다 조금 먼저 끝나면 409 → 1초 뒤 다시
+    retryDelay: 1000,
+  })
+
   const match = entered?.match ?? TODAY_MATCH
   const cheerTeam = entered?.cheeredTeam ?? TEAMS.arsenal
 
   // countdown
   useEffect(() => {
     if (stage !== "measuring") return
-    setRemaining(BATTLE_SECONDS)
     const id = setInterval(() => {
       setRemaining((r) => {
         if (r <= 1) {
@@ -92,9 +156,25 @@ function CommunityPage() {
     }
   }, [stage, remaining, peak])
 
-  const startBattle = () => {
+  const startBattle = async () => {
     reset()
     playWhistle()
+    let started: BattleState | null = null
+    if (community.data) {
+      try {
+        // 진행 중인 대결이 있으면 서버가 그 대결을 돌려준다(다 같이 같은 대결)
+        started = (
+          await BattlesService.startBattle({
+            path: { id: community.data.id },
+            body: { duration_sec: BATTLE_SECONDS },
+          })
+        ).data
+      } catch {
+        started = null
+      }
+    }
+    setBattle(started)
+    setRemaining(started?.remaining_sec || BATTLE_SECONDS) // 이미 진행 중인 대결에 합류하면 남은 시간만큼
     setStage("measuring")
   }
 
@@ -115,17 +195,28 @@ function CommunityPage() {
         peak={peak}
         status={status}
         remaining={remaining}
+        board={battle?.leaderboard}
+        myRank={battle?.me.rank}
         onCancel={() => setStage("room")}
       />
     )
-  if (stage === "result")
+  if (stage === "result") {
+    if (battle && !battleResult.data && !battleResult.isError)
+      return (
+        <p className="py-20 text-center text-sm font-bold text-[var(--c-muted)]">
+          결과 집계 중…
+        </p>
+      )
     return (
       <Result
-        myPeak={finalPeak}
+        {...(battleResult.data
+          ? serverStandings(battleResult.data)
+          : mockStandings(finalPeak))}
         onAgain={startBattle}
         onBack={() => setStage("room")}
       />
     )
+  }
   if (stage === "arena")
     return (
       <ArenaStage
@@ -435,6 +526,8 @@ function Measuring({
   peak,
   status,
   remaining,
+  board,
+  myRank: serverMyRank,
   onCancel,
 }: {
   match: Match
@@ -442,10 +535,14 @@ function Measuring({
   peak: number
   status: string
   remaining: number
+  board?: LeaderboardEntry[]
+  myRank?: number | null
   onCancel: () => void
 }) {
-  // 실시간 순위: 내 peak vs 다른 참가자
-  const others = BATTLE_PLAYERS.filter((p) => !p.me)
+  // 실시간 순위: 내 peak vs 다른 참가자 (서버 대결이면 서버 리더보드 기준)
+  const others = board
+    ? board.filter((e) => e.rank !== serverMyRank).map((e) => toPlayer(e))
+    : BATTLE_PLAYERS.filter((p) => !p.me)
   const myRank = useMemo(() => {
     const higher = others.filter((p) => p.peakDb > peak).length
     return higher + 1
@@ -527,6 +624,34 @@ function Measuring({
               </div>
             </div>
           </SectionCard>
+          {board && (
+            <SectionCard>
+              <h3 className="mb-2 text-[15px] font-black">
+                📊 실시간 순위 ({board.length}명)
+              </h3>
+              <ul className="space-y-1">
+                {board.map((e) => (
+                  <li
+                    key={e.user_id}
+                    className="flex items-center gap-3 rounded-xl px-2 py-1"
+                    style={
+                      e.rank === serverMyRank
+                        ? { background: "var(--c-primary-50)" }
+                        : undefined
+                    }
+                  >
+                    <div className="w-6 text-center">
+                      <RankBadge rank={e.rank} />
+                    </div>
+                    <span className="flex-1 truncate text-sm font-bold">
+                      {e.nickname}
+                    </span>
+                    <span className="font-black">{e.peak_db.toFixed(1)}dB</span>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
           <LiveChat heightClass="h-[200px]" />
         </div>
       </div>
@@ -534,30 +659,47 @@ function Measuring({
   )
 }
 
+/* standings: 목데이터 or 서버 결과 → Result 입력 */
+function mockStandings(myPeak: number) {
+  const list = BATTLE_PLAYERS.map((p) =>
+    p.me ? { ...p, peakDb: Math.max(p.peakDb, myPeak || p.peakDb) } : p,
+  )
+  const standings = [...list].sort((a, b) => b.peakDb - a.peakDb)
+  const myIndex = standings.findIndex((p) => p.me)
+  return {
+    top3: standings.slice(0, 3),
+    myPeakDb: standings[myIndex].peakDb,
+    myPercentile: Math.round(((myIndex + 1) / standings.length) * 100),
+  }
+}
+
+function serverStandings(r: BattleResult) {
+  return {
+    top3: r.top3.map((e) => toPlayer(e, r.me.rank)),
+    myPeakDb: r.me.peak_db ?? 0,
+    myPercentile: r.my_top_percent ?? 100,
+  }
+}
+
 /* ---------------- Result ---------------- */
 function Result({
-  myPeak,
+  top3,
+  myPeakDb,
+  myPercentile,
   onAgain,
   onBack,
 }: {
-  myPeak: number
+  top3: Player[]
+  myPeakDb: number
+  myPercentile: number
   onAgain: () => void
   onBack: () => void
 }) {
-  // 내 기록 반영해 최종 순위 계산
-  const standings = useMemo(() => {
-    const list = BATTLE_PLAYERS.map((p) =>
-      p.me ? { ...p, peakDb: Math.max(p.peakDb, myPeak || p.peakDb) } : p,
-    )
-    return [...list].sort((a, b) => b.peakDb - a.peakDb)
-  }, [myPeak])
-
-  const top3 = standings.slice(0, 3)
-  const myIndex = standings.findIndex((p) => p.me)
-  const me = standings[myIndex]
-  const myPercentile = Math.round(((myIndex + 1) / standings.length) * 100)
-  const podiumOrder = [top3[1], top3[0], top3[2]] // 2-1-3
-  const myDbCount = useCountUp(me.peakDb, 1400)
+  // 2-1-3, 참가자 3명 미만이면 빈 자리 생략
+  const podiumOrder = [1, 0, 2]
+    .filter((i) => top3[i])
+    .map((i) => ({ p: top3[i], rank: i + 1 }))
+  const myDbCount = useCountUp(myPeakDb, 1400)
 
   // 🎉 빵빠레 + 함성 (결과 진입 시)
   useEffect(() => {
@@ -590,13 +732,7 @@ function Result({
         {/* podium */}
         <SectionCard>
           <div className="flex items-end justify-center gap-3 pt-8">
-            {podiumOrder.map((p) => {
-              const rank =
-                p.userId === top3[0].userId
-                  ? 1
-                  : p.userId === top3[1].userId
-                    ? 2
-                    : 3
+            {podiumOrder.map(({ p, rank }) => {
               const h = rank === 1 ? 160 : rank === 2 ? 122 : 98
               const ring =
                 rank === 1

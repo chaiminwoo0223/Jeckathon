@@ -34,7 +34,6 @@ import { handleError } from "@/utils"
 const formSchema = z
   .object({
     email: z.email({ message: "Invalid email address" }),
-    full_name: z.string().optional(),
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters" })
@@ -67,7 +66,6 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
     criteriaMode: "all",
     defaultValues: {
       email: user.email,
-      full_name: user.full_name ?? undefined,
       is_superuser: user.is_superuser,
       is_active: user.is_active,
     },
@@ -130,20 +128,6 @@ const EditUser = ({ user, onSuccess }: EditUserProps) => {
                         {...field}
                         required
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Full name" type="text" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
