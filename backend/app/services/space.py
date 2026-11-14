@@ -5,9 +5,10 @@ Redis에 두고, 이벤트는 커뮤니티마다 채널 하나(`space:{cid}`)로
 한 번만 구독해서 자기에게 붙은 연결에만 넘긴다.
 
 키 (cid = Community.id):
-- space:{cid}:users  HASH  user_id -> {"user_id","name","avatar_url","x","y"} JSON
+- space:{cid}:users  HASH  user_id -> {"user_id","nickname","team","x","z","r"} JSON
 - space:{cid}:seen   ZSET  user_id -> 마지막 활동 시각(epoch 초). SEEN_TTL 지나면 snapshot 때 지운다
 - space:{cid}:conns  HASH  user_id -> 열린 연결 수(탭 여러 개). 0이 되면 leave
+- space:{cid}:chat   LIST  최근 채팅 CHAT_KEEP개(JSON)
 """
 
 import asyncio
@@ -21,12 +22,13 @@ import redis.asyncio as redis
 
 from app.core.config import settings
 
-W, H = 20, 12
+# 원형 경기장 중심(0,0)에서 움직일 수 있는 반경. 프론트 ARENA_PLAY_RADIUS(18 - 1.5)와 같게 둔다
+RADIUS = 16.5
 SEEN_TTL = 60  # 초. 클라이언트는 25초마다 ping을 보낸다
 KEY_TTL = 86400  # 아무도 안 오는 방의 키는 하루 뒤 사라진다
+QUEUE_MAX = 256
 CHAT_KEEP = 50  # 방마다 최근 채팅만 Redis LIST(space:{cid}:chat)에 둔다
 CHAT_TEXT_MAX = 500
-QUEUE_MAX = 256
 TICK = 0.1  # 초. move를 모아 보내는 간격(연결당 최대 10프레임/s)
 
 logger = logging.getLogger(__name__)
@@ -48,8 +50,8 @@ class Hub:
         self._listener: asyncio.Task[None] | None = None
         self._flusher: asyncio.Task[None] | None = None
         self._ready: asyncio.Event | None = None
-        # cid -> user_id -> [x, y]: 이번 TICK에 모인 마지막 위치
-        self.pending: dict[str, dict[str, list[int]]] = {}
+        # cid -> user_id -> [x, z, r]: 이번 TICK에 모인 마지막 위치
+        self.pending: dict[str, dict[str, list[float]]] = {}
 
     @property
     def r(self) -> redis.Redis:
@@ -91,7 +93,11 @@ class Hub:
         msg = json.loads(data)
         if msg["type"] == "move":
             # move는 바로 보내지 않고 사람별 마지막 위치만 모아 TICK마다 한 프레임으로 보낸다
-            self.pending.setdefault(cid, {})[msg["user_id"]] = [msg["x"], msg["y"]]
+            self.pending.setdefault(cid, {})[msg["user_id"]] = [
+                msg["x"],
+                msg["z"],
+                msg["r"],
+            ]
             return
         if msg["type"] == "leave":
             self.pending.get(cid, {}).pop(msg["user_id"], None)
@@ -130,7 +136,7 @@ class Hub:
         old = await self.r.hget(_key(cid, "users"), uid)
         if old:
             prev = json.loads(old)
-            user = {**user, "x": prev["x"], "y": prev["y"]}
+            user = {**user, "x": prev["x"], "z": prev["z"], "r": prev["r"]}
         async with self.r.pipeline(transaction=True) as p:
             p.hset(_key(cid, "users"), uid, _dumps(user))
             p.zadd(_key(cid, "seen"), {uid: time.time()})
@@ -162,16 +168,17 @@ class Hub:
             p.publish(f"space:{cid}", _dumps({"type": "leave", "user_id": uid}))
             await p.execute()
 
-    async def move(self, cid: str, uid: str, x: int, y: int) -> None:
+    async def move(self, cid: str, uid: str, x: float, z: float, r: float) -> None:
         raw = await self.r.hget(_key(cid, "users"), uid)
         if raw is None:  # 오래 조용해서 지워졌다. 재접속하면 다시 생긴다
             return
-        user = {**json.loads(raw), "x": x, "y": y}
+        user = {**json.loads(raw), "x": x, "z": z, "r": r}
         async with self.r.pipeline(transaction=True) as p:
             p.hset(_key(cid, "users"), uid, _dumps(user))
             p.zadd(_key(cid, "seen"), {uid: time.time()})
             p.publish(
-                f"space:{cid}", _dumps({"type": "move", "user_id": uid, "x": x, "y": y})
+                f"space:{cid}",
+                _dumps({"type": "move", "user_id": uid, "x": x, "z": z, "r": r}),
             )
             await p.execute()
 
@@ -188,7 +195,7 @@ class Hub:
         msg = {
             "type": "chat",
             "user_id": user["user_id"],
-            "name": user["name"],
+            "name": user["nickname"],
             "text": text,
             "sent_at": datetime.now(UTC).isoformat(),
         }
@@ -204,6 +211,15 @@ class Hub:
 
     async def chat_history(self, cid: str) -> list[dict[str, Any]]:
         return [json.loads(m) for m in await self.r.lrange(_key(cid, "chat"), 0, -1)]
+
+    async def say(self, cid: str, uid: str, text: str) -> None:
+        """머리 위 말풍선. 저장하지 않는다(대화 기록은 채팅 WS)."""
+        async with self.r.pipeline(transaction=True) as p:
+            p.zadd(_key(cid, "seen"), {uid: time.time()})
+            p.publish(
+                f"space:{cid}", _dumps({"type": "say", "user_id": uid, "text": text})
+            )
+            await p.execute()
 
     async def touch(self, cid: str, uid: str) -> None:
         await self.r.zadd(_key(cid, "seen"), {uid: time.time()})

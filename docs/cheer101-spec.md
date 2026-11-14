@@ -332,7 +332,7 @@ Fortune {
 | POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
-| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스)과 실시간 채팅을 한 소켓으로. 20×12 칸 위 접속자 위치·이모트·채팅(방마다 최근 50개). 입장한 멤버만. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
+| WS | /space/{communityId}/ws?token={JWT} | 커뮤니티 공간(메타버스, 3D 응원 스타디움)과 실시간 채팅을 한 소켓으로. 입장한 멤버만. 원형 경기장(반경 16.5) 위 접속자 위치·방향, 응원팀 유니폼, 말풍선·이모트, 채팅(최근 50개 Redis). DB 저장 없음. API와 다른 프로세스로 띄울 수 있다. 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
 
 **입장 규칙**
 
