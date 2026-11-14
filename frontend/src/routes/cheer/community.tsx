@@ -41,6 +41,7 @@ import {
 import {
   entryState,
   useAppliedMatches,
+  useJoinCommunity,
 } from "@/cheer/hooks/use-applied-matches"
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
@@ -150,6 +151,11 @@ function CommunityPage() {
 /* ---------------- Invite (입장 초대장) ---------------- */
 function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
   const { data: applied, isLoading, isError, refetch } = useAppliedMatches()
+  const join = useJoinCommunity()
+  const enter = (am: AppliedMatch) =>
+    join.mutate(am, { onSuccess: () => onEnter(am) })
+  const entering = (am: AppliedMatch) =>
+    join.isPending && join.variables?.matchId === am.matchId
   const [now, setNow] = useState(() => new Date())
 
   // 1분 경계(입장 활성화)를 놓치지 않도록 30초마다 재평가
@@ -207,7 +213,7 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
           <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
             캘린더에서 보고 싶은 경기를 골라 응원 신청을 하면
             <br />
-            경기 시작 1시간 전에 입장 초대장이 도착해요!
+            경기 시작 3시간 전에 입장 초대장이 도착해요!
           </p>
           <Link
             to="/cheer/calendar"
@@ -229,7 +235,7 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
             내 관람 신청 내역
           </h1>
           <p className="text-sm text-[var(--c-muted)]">
-            경기 시작 1시간 전부터 입장할 수 있어요
+            경기 시작 3시간 전부터 입장할 수 있어요
           </p>
         </div>
         <Link
@@ -254,7 +260,8 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
                 key={am.id}
                 applied={am}
                 state={state}
-                onEnter={() => onEnter(am)}
+                onEnter={() => enter(am)}
+                entering={entering(am)}
               />
             ))}
           </div>
@@ -273,7 +280,8 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
                 key={am.id}
                 applied={am}
                 state={state}
-                onEnter={() => onEnter(am)}
+                onEnter={() => enter(am)}
+                entering={entering(am)}
               />
             ))}
           </div>

@@ -204,7 +204,7 @@ export const MATCH_DAYS: Record<string, number> = {
 export const TODAY_MATCH = MATCHES[0] // 토트넘 vs 아스널
 
 // ---------- 관람 신청 (초대장) ----------
-// 캘린더에서 응원 신청한 경기. 경기 1시간 전부터 입장 초대장이 활성화된다.
+// 캘린더에서 응원 신청한 경기. 경기 3시간 전부터 입장 초대장이 활성화된다.
 // 데이터는 GET /communities/mine (hooks/use-applied-matches.ts 가 이 모양으로 바꾼다).
 export interface AppliedMatch {
   id: number // 화면용 숫자 id (목 타입 호환). API 호출에는 matchId·communityId 를 쓴다
@@ -215,11 +215,12 @@ export interface AppliedMatch {
   communityId: string
   memberCount: number
   joined: boolean // 이미 커뮤니티에 입장했는지
-  enterOpensAt: string // ISO, 서버가 정한 입장 시작 시각 (경기 1시간 전)
+  enterOpensAt: string // ISO, 서버가 정한 입장 시작 시각 (경기 3시간 전)
+  clockOffsetMs: number // 서버 시각 - 브라우저 시각 (입장 시각 비교용)
 }
 
 export interface InvitationState {
-  canEnter: boolean // 입장 버튼 활성화 여부 (경기 1시간 전 ~ 경기 종료)
+  canEnter: boolean // 입장 버튼 활성화 여부 (경기 3시간 전 ~ 경기 종료)
   started: boolean // 경기 시작 시각이 지났는지
   minutesUntil: number // 경기 시작까지 남은 분 (음수면 이미 시작)
 }

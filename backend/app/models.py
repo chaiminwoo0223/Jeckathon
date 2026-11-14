@@ -386,7 +386,7 @@ class CommunityInfo(SQLModel):
     match_id: uuid.UUID
     member_count: int
     joined: bool
-    enter_opens_at: datetime  # 경기 시작 1시간 전
+    enter_opens_at: datetime  # 경기 시작 3시간 전
     can_enter: bool  # 서버 시각 기준 지금 입장 가능한가
 
 
