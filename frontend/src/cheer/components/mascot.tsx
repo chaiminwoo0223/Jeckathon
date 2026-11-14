@@ -54,16 +54,6 @@ export function Mascot({
       >
         <span style={{ fontSize: s.face, transform: "translateY(2px)" }}>{face}</span>
       </div>
-      {/* scarf */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-full"
-        style={{
-          bottom: -s.box * 0.02,
-          width: s.box * 0.82,
-          height: s.box * 0.18,
-          background: "linear-gradient(90deg,#7b5cf5,#b794ff)",
-        }}
-      />
       {/* flag */}
       {flag && (
         <div className="absolute" style={{ right: -s.box * 0.22, top: -s.box * 0.1, fontSize: s.crown }}>
