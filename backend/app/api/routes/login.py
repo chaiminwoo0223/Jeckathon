@@ -42,9 +42,10 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = crud.authenticate(
-        session=session, email=form_data.username, password=form_data.password
-    )
+    # 아이디(@ 없음)도 받는다: 프론트 로그인 폼·Swagger Authorize가 이 경로를 쓴다
+    login = form_data.username
+    email = login if "@" in login else login_id_to_email(login)
+    user = crud.authenticate(session=session, email=email, password=form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
