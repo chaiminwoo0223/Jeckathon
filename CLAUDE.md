@@ -87,7 +87,7 @@
 - 운영 비밀값(SECRET_KEY, DB·superuser 비밀번호, AI_API_KEY)은 서버 파일에만 있다. 바꿀 일이 있으면 배포 담당(SonAIengine)에게.
 - `deploy/`, `.github/`는 배포 담당 영역이다.
 - 커뮤니티 공간·채팅 WS는 Redis로 워커(`--workers 4`) 사이를 잇는다. 운영 `deploy/home/compose.yml`에 `redis` 서비스(`redis:8-alpine`)와 backend 환경변수 `REDIS_URL: redis://redis:6379/0`이 있다. Redis가 없으면 서버는 뜨지만 이 WS가 모두 실패한다. 워커 수를 1로 줄일 필요는 없다.
-- 공간·채팅 WS는 API와 다른 프로세스로 띄울 수 있다(같은 이미지, 명령만 다름, `backend/app/realtime_main.py`의 `space_app`). 운영에 나누려면 배포 담당에게 요청: `deploy/home/compose.yml`에 서비스 `space`(`command: fastapi run app/realtime_main.py --app space_app --workers 2`, env는 backend와 같게, `caddy_default` 네트워크 별칭), Caddy에 `handle /api/v1/space/* { reverse_proxy <space 서비스>:8000 }`. 나머지 경로는 지금처럼 backend. 나누기 전에도 backend 하나가 공간·채팅까지 다 서빙하므로 이 코드가 먼저 들어가도 깨지지 않는다.
+- 공간·채팅 WS는 API와 다른 프로세스로 돈다: 운영 `deploy/home/compose.yml`의 `space` 서비스(같은 이미지, `fastapi run app/realtime_main.py --app space_app --workers 2`, `caddy_default` 별칭 `jeckathon-space`). **남은 일(배포 담당, 홈서버 Caddyfile)**: `handle /api/v1/space/* { reverse_proxy jeckathon-space:8000 }`를 backend 규칙보다 앞에 둔다. 그 전까지는 backend가 같은 경로를 계속 서빙하므로 `space`가 떠 있기만 해도 깨지지 않는다. `deploy.sh`는 backend 헬스만 기다리므로 `space` 상태는 `docker compose ps`로 본다.
 
 ## Git
 

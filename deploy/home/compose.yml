@@ -1,7 +1,8 @@
 # Home server deployment (cheer101.infoedu.co.kr).
-# The backend image also serves the built frontend, so only db + redis + backend run.
+# The backend image also serves the built frontend, so only db + redis + backend + space run.
 # No ports are published: the home server's Caddy reaches the backend
 # through the shared `caddy_default` network (alias `jeckathon-backend`).
+# `space` (alias `jeckathon-space`) is the same image running only the space/chat WebSocket.
 # Secrets come from an env file on the server, never from this repo.
 name: jeckathon
 
@@ -78,6 +79,31 @@ services:
       caddy:
         aliases:
           - jeckathon-backend
+
+  # 공간·채팅 WebSocket만 API와 다른 프로세스로 돌린다(같은 이미지, app/realtime_main.py의 space_app).
+  # Caddy가 /api/v1/space/* 를 jeckathon-space:8000 으로 보내야 이리로 온다.
+  # 그 전까지는 backend가 같은 경로를 계속 서빙하므로 이 서비스가 떠 있기만 해도 깨지는 건 없다.
+  space:
+    image: jeckathon-backend:latest
+    restart: unless-stopped
+    command: ["fastapi", "run", "app/realtime_main.py", "--app", "space_app", "--workers", "2"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
+    environment: *backend-env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      default:
+      caddy:
+        aliases:
+          - jeckathon-space
 
 networks:
   caddy:
