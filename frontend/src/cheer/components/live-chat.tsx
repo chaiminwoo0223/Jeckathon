@@ -71,7 +71,8 @@ function useSpaceChat(communityId?: string) {
         }
       }
       ws.onclose = (e) => {
-        wsRef.current = null
+        // 늦게 닫힌 옛 연결(StrictMode 이중 실행·재연결)이 새 연결을 지우지 않게
+        if (wsRef.current === ws) wsRef.current = null
         // 1008: 토큰이 틀리거나 입장하지 않은 커뮤니티 → 다시 붙지 않는다
         if (!stopped && e.code !== 1008)
           retry = window.setTimeout(connect, RETRY_MS)
@@ -117,13 +118,13 @@ export function LiveChat({
   const messages = live.messages ?? local
   const [input, setInput] = useState("")
   const listRef = useRef<HTMLDivElement>(null)
+  // 위로 올려 지난 글을 보는 중이면 새 글이 와도 끌어내리지 않는다
+  const atBottom = useRef(true)
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 새 메시지가 추가될 때마다 맨 아래로 스크롤
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 새 메시지가 추가될 때마다 채팅 목록 안에서만 맨 아래로
   useEffect(() => {
-    listRef.current?.scrollTo({
-      top: listRef.current.scrollHeight,
-      behavior: "smooth",
-    })
+    const el = listRef.current
+    if (el && atBottom.current) el.scrollTop = el.scrollHeight
   }, [messages])
 
   const send = (e: FormEvent) => {
@@ -138,13 +139,14 @@ export function LiveChat({
       ])
     }
     setInput("")
+    atBottom.current = true // 내가 보낸 글은 항상 보이게
     onSend?.(text)
     playPop()
   }
 
   return (
     <SectionCard
-      className={`flex flex-col ${fill ? "h-full" : ""}`}
+      className={`flex flex-col ${fill ? "h-full min-h-[360px]" : ""}`}
       pad={false}
     >
       <div
@@ -162,7 +164,12 @@ export function LiveChat({
 
       <div
         ref={listRef}
-        className={`space-y-3 overflow-y-auto px-4 py-3 ${fill ? "min-h-[300px] flex-1" : heightClass}`}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          atBottom.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 40
+        }}
+        className={`space-y-3 overflow-y-auto overscroll-contain px-4 py-3 ${fill ? "min-h-0 flex-1" : heightClass}`}
       >
         {messages.map((m) => (
           <div key={m.id} className="flex items-start gap-2.5">
