@@ -34,7 +34,28 @@
 - JSON 필드는 snake_case로 쓴다(명세 예시의 camelCase `totalPoints` → `total_points`). 프론트 클라이언트는 `case: "preserve"`라 이름이 그대로 넘어간다.
 - 백엔드가 응답 스키마를 바꾸고 push하면 FE는 pull 후 루트에서 `bash scripts/generate-client.sh`로 클라이언트를 다시 만든다(서버 실행 불필요, `uv sync` 필요).
 - 채팅을 뺀 실시간은 폴링이다(명세 §0). 프론트는 TanStack Query `refetchInterval: 2000`~`3000`, `retry: 1`. 백엔드는 스케줄러 없이 조회 시점에 상태를 전환한다(대결 지연 정산, 명세 §4.6).
-- 채팅도 폴링으로 시작한다. WebSocket이 필요해지면 같은 FastAPI 앱의 `@router.websocket` 엔드포인트 하나로 붙인다(별도 소켓 서버 없음).
+- 채팅은 같은 FastAPI 앱의 WebSocket 엔드포인트 하나다(별도 소켓 서버 없음). 프론트 연동은 아래 "실시간 채팅 (프론트 연동)"을 따른다.
+
+## 실시간 채팅 (프론트 연동)
+
+백엔드 구현: `backend/app/api/routes/chat.py`(BE-2). 프론트 `frontend/src/cheer/components/live-chat.tsx`는 아직 로컬 상태 데모라 다른 사람 메시지가 안 온다. 아래대로 붙인다.
+
+- 주소: `WS /api/v1/chat/rooms/{roomId}/ws?token=<access_token>`. `roomId`는 1 또는 2(고정). 브라우저 WebSocket은 헤더를 못 붙여서 토큰을 쿼리로 넘긴다. 호스트는 `VITE_API_URL`의 `http`를 `ws`로 바꿔 쓴다(HTTPS면 `wss`가 된다).
+- 토큰: `POST /api/v1/login/access-token`이 주는 `access_token`(localStorage `access_token`). 지금 `/cheer/login`은 백엔드를 부르지 않으므로 이 토큰이 없다.
+- 거부: 토큰이 없거나 틀리면, 방 번호가 1·2가 아니면 연결 전에 끊긴다(close code 1008).
+- 보내기: 텍스트 그대로 `ws.send(text)`. 서버가 앞뒤 공백을 지우고 500자로 자르며 빈 문자열은 버린다.
+- 받기: JSON `{room_id, user_id, name, text, sent_at}`. `name`은 `full_name`, 없으면 이메일. 내가 보낸 것도 서버가 되돌려 주므로 화면에 직접 추가하지 않는다(중복된다). 내 메시지인지는 `user_id === JWT payload의 sub`로 가린다.
+- 순서: 같은 방의 모든 사람이 같은 순서로 받는다(4명 동시 전송으로 확인). `sent_at`은 받은 순서대로 증가한다.
+- 입장 직후 그 방의 최근 50개가 먼저 온다. DB에 저장하지 않으므로 서버를 재시작하면 사라진다.
+- 접속자 수(화면의 "14명")는 백엔드에 아직 없다.
+- 백엔드는 워커 1개로 돌아야 한다(`fastapi dev` 또는 `fastapi run --workers 1`). 워커가 여럿이면 같은 방이어도 서로 메시지가 안 보일 수 있다.
+
+```ts
+const base = (import.meta.env.VITE_API_URL || location.origin).replace(/^http/, "ws")
+const ws = new WebSocket(`${base}/api/v1/chat/rooms/${room}/ws?token=${localStorage.getItem("access_token")}`)
+ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)])
+// 보내기: ws.send(text)  (화면에 직접 추가하지 않음)
+```
 
 ## 키와 환경 파일
 
