@@ -2,6 +2,9 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     admin,
+    battles,
+    chat,
+    communities,
     items,
     login,
     matches,
@@ -22,6 +25,9 @@ api_router.include_router(teams.router)
 api_router.include_router(matches.router)
 api_router.include_router(me.router)
 api_router.include_router(admin.router)
+api_router.include_router(communities.router)
+api_router.include_router(battles.router)
+api_router.include_router(chat.router)
 
 
 if settings.FASTAPI_ENV == "development":
