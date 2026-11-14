@@ -1,22 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { ArrowLeft, ChevronRight, Mic, Sparkles, Trophy, Users } from "lucide-react"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { ArrowLeft, CalendarDays, Mic, Sparkles, Ticket as TicketIcon, Trophy, Users } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Confetti } from "@/cheer/components/confetti"
 import { DecibelMeter } from "@/cheer/components/decibel-meter"
 import { LiveChat } from "@/cheer/components/live-chat"
 import { Mascot } from "@/cheer/components/mascot"
 import { Avatar, Pill, RankBadge, SectionCard, SectionTitle } from "@/cheer/components/primitives"
+import { Ticket } from "@/cheer/components/ticket"
 import { VideoStream } from "@/cheer/components/video-stream"
+import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
 import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
 import {
+  type AppliedMatch,
   BATTLE_PLAYERS,
   BATTLE_REWARDS,
   DEFEAT_RANKING,
   FORTUNES,
+  formatKDate,
   formatTime,
+  invitationState,
+  type Match,
   pct,
+  type Team,
   TEAMS,
   TODAY_MATCH,
   VICTORY_RANKING,
@@ -32,9 +39,13 @@ const TARGET_DB = 90
 
 function CommunityPage() {
   const [stage, setStage] = useState<Stage>("invite")
+  const [entered, setEntered] = useState<AppliedMatch | null>(null)
   const [remaining, setRemaining] = useState(BATTLE_SECONDS)
   const [finalPeak, setFinalPeak] = useState(0)
   const { db, peak, status, reset } = useDecibel(stage === "measuring")
+
+  const match = entered?.match ?? TODAY_MATCH
+  const cheerTeam = entered?.cheeredTeam ?? TEAMS.arsenal
 
   // countdown
   useEffect(() => {
@@ -72,58 +83,154 @@ function CommunityPage() {
     setStage("measuring")
   }
 
-  if (stage === "invite") return <Invite onEnter={() => setStage("room")} />
+  if (stage === "invite")
+    return (
+      <InviteList
+        onEnter={(am) => {
+          setEntered(am)
+          setStage("room")
+        }}
+      />
+    )
   if (stage === "measuring")
-    return <Measuring db={db} peak={peak} status={status} remaining={remaining} onCancel={() => setStage("room")} />
+    return (
+      <Measuring
+        match={match}
+        db={db}
+        peak={peak}
+        status={status}
+        remaining={remaining}
+        onCancel={() => setStage("room")}
+      />
+    )
   if (stage === "result")
     return <Result myPeak={finalPeak} onAgain={startBattle} onBack={() => setStage("room")} />
-  return <Room onStart={startBattle} />
+  return <Room match={match} cheerTeam={cheerTeam} onStart={startBattle} onLeave={() => setStage("invite")} />
 }
 
-/* ---------------- Invite ---------------- */
-function Invite({ onEnter }: { onEnter: () => void }) {
+/* ---------------- Invite (입장 초대장) ---------------- */
+function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
+  const applied = useAppliedMatches()
+  const [now, setNow] = useState(() => new Date())
+
+  // 1분 경계(입장 활성화)를 놓치지 않도록 30초마다 재평가
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const items = useMemo(
+    () => applied.map((am) => ({ am, state: invitationState(am.match.kickoffAt, now) })),
+    [applied, now],
+  )
+  const open = items.filter((i) => i.state.canEnter)
+  const upcoming = items.filter((i) => !i.state.canEnter)
+
+  // 신청 내역 없음 → 캘린더로 안내
+  if (items.length === 0) {
+    return (
+      <div className="cheer-reveal grid min-h-[70vh] place-items-center">
+        <SectionCard className="relative w-full max-w-md overflow-hidden pt-10 text-center">
+          <div className="relative mb-4 flex h-36 items-end justify-center">
+            <Mascot size="xl" float flag />
+          </div>
+          <Pill className="mx-auto">🎟️ 입장 초대장</Pill>
+          <h2 className="mt-3 text-2xl font-black leading-snug">아직 신청한 경기가 없어요</h2>
+          <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
+            캘린더에서 보고 싶은 경기를 골라 응원 신청을 하면
+            <br />
+            경기 시작 1시간 전에 입장 초대장이 도착해요!
+          </p>
+          <Link
+            to="/cheer/calendar"
+            className="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[var(--c-primary)] py-3.5 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)]"
+          >
+            <CalendarDays size={16} /> 경기 신청하러 가기
+          </Link>
+        </SectionCard>
+      </div>
+    )
+  }
+
   return (
-    <div className="cheer-reveal grid min-h-[70vh] place-items-center">
-      <SectionCard className="relative w-full max-w-md overflow-hidden pt-10 text-center">
-        <Confetti count={30} />
-        <div className="relative mb-4 flex h-40 items-end justify-center">
-          <Mascot size="xl" float flag />
+    <div className="cheer-reveal space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Pill>🎟️ 입장 초대장</Pill>
+          <h1 className="mt-2 text-2xl font-black tracking-tight">내 관람 신청 내역</h1>
+          <p className="text-sm text-[var(--c-muted)]">경기 시작 1시간 전부터 입장할 수 있어요</p>
         </div>
-        <Pill className="mx-auto">초대장 도착 💌</Pill>
-        <h2 className="mt-3 text-2xl font-black leading-snug">
-          {TODAY_MATCH.away.name} 팬 커뮤니티<br />초대장이 도착했어요!
-        </h2>
-        <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
-          지금 바로 커뮤니티에 입장하고 함께 응원해요!
-        </p>
-        <button
-          type="button"
-          onClick={onEnter}
-          className="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-2xl bg-[var(--c-primary)] py-3.5 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)]"
+        <Link
+          to="/cheer/calendar"
+          className="hidden items-center gap-1.5 rounded-full bg-[var(--c-surface)] px-4 py-2 text-sm font-bold text-[var(--c-primary)] shadow-sm sm:inline-flex"
+          style={{ border: "1px solid var(--c-line)" }}
         >
-          커뮤니티 입장하기 <ChevronRight size={16} />
-        </button>
-        <button type="button" className="mt-2 w-full py-2 text-xs font-bold text-[var(--c-muted)]">
-          나중에 할게요
-        </button>
-      </SectionCard>
+          <CalendarDays size={15} /> 경기 더 신청하기
+        </Link>
+      </div>
+
+      {/* 지금 입장 가능 */}
+      {open.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-1.5 text-sm font-black text-[var(--c-ink-soft)]">
+            <span className="size-2 animate-pulse rounded-full bg-[var(--c-win)]" />
+            지금 입장할 수 있어요 ({open.length})
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {open.map(({ am, state }) => (
+              <Ticket key={am.id} applied={am} state={state} onEnter={() => onEnter(am)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 신청했지만 아직 안 열린 경기 */}
+      {upcoming.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-1.5 text-sm font-black text-[var(--c-ink-soft)]">
+            <TicketIcon size={15} /> 입장 대기 중 ({upcoming.length})
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {upcoming.map(({ am, state }) => (
+              <Ticket key={am.id} applied={am} state={state} onEnter={() => onEnter(am)} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
 
 /* ---------------- Room ---------------- */
-function Room({ onStart }: { onStart: () => void }) {
-  const fortune = FORTUNES[TEAMS.arsenal.id]
+function Room({
+  match,
+  cheerTeam,
+  onStart,
+  onLeave,
+}: {
+  match: Match
+  cheerTeam: Team
+  onStart: () => void
+  onLeave: () => void
+}) {
+  const fortune = FORTUNES[cheerTeam.id] ?? FORTUNES[TEAMS.arsenal.id]
   return (
     <div className="cheer-reveal space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Pill>오늘의 커뮤니티</Pill>
+          <button
+            type="button"
+            onClick={onLeave}
+            className="mb-1 flex items-center gap-1 text-xs font-bold text-[var(--c-muted)] hover:text-[var(--c-ink-soft)]"
+          >
+            <ArrowLeft size={14} /> 초대장으로
+          </button>
+          <Pill>📣 {cheerTeam.name} 응원방</Pill>
           <h1 className="mt-2 text-2xl font-black tracking-tight">
-            {TODAY_MATCH.home.name} vs {TODAY_MATCH.away.name}
+            {match.home.name} vs {match.away.name}
           </h1>
           <p className="text-sm text-[var(--c-muted)]">
-            11.14 (금) {formatTime(TODAY_MATCH.kickoffAt)} · {TODAY_MATCH.league}
+            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} · {match.league}
           </p>
         </div>
         <Pill color="var(--c-win)" bg="var(--c-win-soft)">
@@ -135,7 +242,7 @@ function Room({ onStart }: { onStart: () => void }) {
       <div>
         <SectionTitle icon="📺">경기 생중계</SectionTitle>
         <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
-          <VideoStream home={TODAY_MATCH.home} away={TODAY_MATCH.away} />
+          <VideoStream home={match.home} away={match.away} />
           <LiveChat heightClass="h-[300px]" />
         </div>
       </div>
@@ -172,7 +279,7 @@ function Room({ onStart }: { onStart: () => void }) {
       <SectionCard className="relative overflow-hidden">
         <div className="pointer-events-none absolute -right-2 -top-2 text-6xl opacity-15">🔮</div>
         <SectionTitle icon={<Sparkles size={18} className="text-[var(--c-primary)]" />}>
-          입장 기념 · {TODAY_MATCH.away.name}의 오늘 운세
+          입장 기념 · {cheerTeam.name}의 오늘 운세
         </SectionTitle>
         <div className="rounded-2xl bg-[var(--c-primary-50)] p-4">
           <p className="text-[15px] font-bold text-[var(--c-primary-700)]">"{fortune.fortuneText}"</p>
@@ -219,12 +326,14 @@ function MiniRanking({
 
 /* ---------------- Measuring ---------------- */
 function Measuring({
+  match,
   db,
   peak,
   status,
   remaining,
   onCancel,
 }: {
+  match: Match
   db: number
   peak: number
   status: string
@@ -260,7 +369,7 @@ function Measuring({
 
       <div className="grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
         {/* main: live stream */}
-        <VideoStream home={TODAY_MATCH.home} away={TODAY_MATCH.away} />
+        <VideoStream home={match.home} away={match.away} />
 
         {/* side: decibel meter + live chat */}
         <div className="space-y-5">

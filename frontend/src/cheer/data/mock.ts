@@ -151,6 +151,56 @@ export const MATCH_DAYS: Record<string, number> = {
 
 export const TODAY_MATCH = MATCHES[0] // 토트넘 vs 아스널
 
+// ---------- 관람 신청 (초대장) ----------
+// 유저가 "이 경기를 보러 가겠다"고 신청한 내역. 경기 1시간 전부터 입장 초대장이 활성화된다.
+export interface AppliedMatch {
+  id: number // 신청 식별자 = matchId 재사용
+  match: Match
+  cheeredTeam: Team
+}
+
+export const ENTRY_WINDOW_MIN = 60 // 경기 시작 N분 전부터 입장 가능
+const MATCH_DURATION_MIN = 150 // 킥오프 후 이 시간까지는 입장 유지(대략 경기 길이)
+
+// 데모 안정성용 시드. 킥오프를 "현재 시각 기준 상대값"으로 만들어
+// 언제 시연하든 "활성 초대장 / 잠긴 초대장" 상태를 모두 재현한다.
+export function seedAppliedMatches(now: Date = new Date()): AppliedMatch[] {
+  const at = (minFromNow: number) => new Date(now.getTime() + minFromNow * 60_000).toISOString()
+  return [
+    // 40분 뒤 → 1시간 이내 → 입장 가능
+    { id: 9001, cheeredTeam: TEAMS.arsenal, match: { id: 9001, home: TEAMS.tottenham, away: TEAMS.arsenal, league: "프리미어리그", kickoffAt: at(40), status: "SCHEDULED" } },
+    // 4시간 뒤 → 아직 잠김
+    { id: 9002, cheeredTeam: TEAMS.liverpool, match: { id: 9002, home: TEAMS.mancity, away: TEAMS.liverpool, league: "프리미어리그", kickoffAt: at(260), status: "SCHEDULED" } },
+    // 내일 → 잠김
+    { id: 9003, cheeredTeam: TEAMS.barcelona, match: { id: 9003, home: TEAMS.realmadrid, away: TEAMS.barcelona, league: "라리가", kickoffAt: at(1500), status: "SCHEDULED" } },
+  ]
+}
+
+export interface InvitationState {
+  canEnter: boolean // 입장 버튼 활성화 여부 (경기 1시간 전 ~ 경기 종료)
+  started: boolean // 킥오프가 지났는지
+  minutesUntil: number // 킥오프까지 남은 분 (음수면 이미 시작)
+}
+
+export function invitationState(kickoffAt: string, now: Date = new Date()): InvitationState {
+  const diffMs = new Date(kickoffAt).getTime() - now.getTime()
+  const minutesUntil = Math.ceil(diffMs / 60_000)
+  const started = diffMs <= 0
+  const canEnter = minutesUntil <= ENTRY_WINDOW_MIN && diffMs > -MATCH_DURATION_MIN * 60_000
+  return { canEnter, started, minutesUntil }
+}
+
+// 킥오프까지 남은 시간을 사람이 읽는 문구로. (양수 분 기준)
+export function formatCountdown(minutesUntil: number): string {
+  if (minutesUntil <= 0) return "곧 시작"
+  if (minutesUntil < 60) return `${minutesUntil}분 후`
+  const h = Math.floor(minutesUntil / 60)
+  const m = minutesUntil % 60
+  if (h < 24) return m === 0 ? `${h}시간 후` : `${h}시간 ${m}분 후`
+  const days = Math.floor(h / 24)
+  return `${days}일 후`
+}
+
 // 경기 중계 스트림 (데모용 샘플 소스).
 // 실제 중계로 교체하려면 이 URL만 바꾸면 됨. HLS는 지원 브라우저(Safari)에서 네이티브 재생, 그 외는 mp4 프로그레시브.
 export const STREAM = {
