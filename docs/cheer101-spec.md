@@ -18,7 +18,7 @@
 | 커뮤니티(Community) | 경기 1개당 1개 생성되는 응원방 |
 | 데시벨 대결(Battle) | 커뮤니티 안에서 열리는 타임어택 응원 게임 (최대 5명) |
 | 포인트(Point) | 경기 결과·데시벨 TOP3로 적립되는 재화 |
-| 운세(Fortune) | 경기 당일 응원팀 기준 AI 생성 운세 |
+| 운세(Fortune) | 경기 당일 응원팀 기준 운세 (지금은 시드 문구 풀, AI 생성은 후속) |
 
 ## 2. 데이터 모델
 
@@ -177,7 +177,7 @@ PointTransaction {
 }
 ```
 
-### 2.11 Fortune (운세, AI 생성 캐시)
+### 2.11 Fortune (운세, AI 생성 캐시 — AI 연동 때 사용, 지금은 비어 있음)
 
 ```
 Fortune {
@@ -412,11 +412,11 @@ Fortune {
 - `maxPlayers`(5) 초과 입장 불가.
 - 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants}`, 종료 전이면 409. `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
 
-### 4.7 운세 (AI)
+### 4.7 운세 (시드 → AI)
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | /matches/{id}/fortune?teamId= | 경기 당일 운세. 캐시 없으면 AI 생성 후 저장·반환 |
+| GET | /matches/{id}/fortune?team_id= | 경기 당일 응원팀 운세. 시드 문구 풀에서 (경기 날짜 KST, 팀)으로 고정해 골라 즉시 반환 |
 
 **응답 예시**
 
@@ -429,7 +429,8 @@ Fortune {
 }
 ```
 
-- **AI 담당**: 프롬프트 = 팀명 + 상대팀 + 최근 폼(옵션). 톤은 "쓸모없지만 그럴듯한" 운세. 결과를 `Fortune` 테이블에 (matchId, teamId, date) 유니크로 캐싱해 중복 호출 방지.
+- **현재(시드)**: `backend/app/ai/fortune_seed.json`의 문구·팁 풀에서 `sha256(날짜:팀id)`로 하나를 고른다. 같은 날 같은 팀은 항상 같은 결과, 날짜가 바뀌면 달라지고, 같은 경기의 두 팀은 서로 다른 문구가 나온다. 네트워크 호출·DB 저장 없음(AI 응답 지연이 UX를 해쳐서 시드로 먼저 간다). 팀 이름은 문구의 `{team}` 자리에 들어간다. 톤은 "쓸모없지만 그럴듯한" 운세. 선수별 운세는 범위 밖(후속).
+- **후속(AI)**: 프롬프트 = 팀명 + 상대팀 + 최근 폼(옵션). 조회 순서는 `Fortune` 캐시(matchId, teamId, date 유니크) → AI → 시드 풀. AI 결과만 `Fortune`에 저장하고, 실패하면 시드로 내려간다. 호출 코드는 `app/ai/fortune.py`에 보관돼 있다.
 - (양념) 응원 기록 기반 AI 한 줄 평도 같은 패턴으로 추가 가능.
 
 ## 5. 화면 ↔ API 매핑 (목업 기준)
@@ -454,7 +455,7 @@ Fortune {
 - BE-1: User/Team/Match/CheerRecord + 인증 스텁 + 경기 일정/캘린더 API + 시드 데이터 + 경기 종료 정산(포인트·요정·배지)
 - BE-2: Community/Battle/BattleRecord + 데시벨 대결 폴링 API + 랭킹 API + 포인트/배지 조회
 - FE: 캘린더 → 응원설정 → 커뮤니티 → 데시벨 측정(Web Audio API) → 마이페이지 순으로 핵심 플로우
-- AI: 운세 생성 API + 프롬프트 튜닝, (여유 시) 기록 AI 한 줄 평
+- AI: 운세 시드 문구 풀 + API(AI 생성은 후속), (여유 시) 기록 AI 한 줄 평
 
 **양념 (되면)**
 - 운세 화면, SNS 공유 카드 이미지, 배지 연출

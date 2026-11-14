@@ -629,3 +629,28 @@ class ShareCard(SQLModel):
     fairy_label: str
     stats: StatsPublic  # total이 경기수
     favorite_team: TeamPublic | None
+
+
+# --- AI ---
+class Fortune(SQLModel, table=True):
+    """경기 당일 응원팀 운세(AI 생성 캐시). (경기, 팀, 날짜)당 한 건."""
+
+    __table_args__ = (UniqueConstraint("match_id", "team_id", "date"),)
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    match_id: uuid.UUID = Field(
+        foreign_key="match.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    team_id: uuid.UUID = Field(foreign_key="team.id", nullable=False)
+    date: date_type  # 경기 당일(KST)
+    fortune_text: str = Field(max_length=500)
+    cheer_tip: str = Field(max_length=300)
+    luck_score: int  # 0~100
+
+
+class FortunePublic(SQLModel):
+    match_id: uuid.UUID
+    team_id: uuid.UUID
+    fortune_text: str
+    cheer_tip: str
+    luck_score: int

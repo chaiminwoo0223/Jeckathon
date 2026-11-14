@@ -5,6 +5,7 @@ from app.api.routes import (
     battles,
     chat,
     communities,
+    fortune,
     items,
     login,
     matches,
@@ -29,6 +30,7 @@ api_router.include_router(communities.router)
 api_router.include_router(communities.match_router)
 api_router.include_router(battles.router)
 api_router.include_router(chat.router)
+api_router.include_router(fortune.router)
 
 
 if settings.FASTAPI_ENV == "development":
