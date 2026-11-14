@@ -14,6 +14,7 @@ from app.models import (
     MeProfile,
     MeSummary,
     ProfileUpdate,
+    ShareCard,
     StatsPublic,
     Team,
     TeamPublic,
@@ -115,6 +116,25 @@ def read_my_stats(session: SessionDep, current_user: CurrentUser) -> Any:
     시즌 통계(도넛용): 승/무/패 수와 승률·패배율. 진행 전(PENDING) 기록은 세지 않는다.
     """
     return stats_service.user_stats(session, current_user.id)
+
+
+@router.get("/share-card", response_model=ShareCard)
+def read_share_card(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    SNS 공유 카드 데이터: 닉네임, 요정, 승률·경기수, 최애팀.
+    """
+    stats = stats_service.user_stats(session, current_user.id)
+    fairy = stats_service.fairy_type(win=stats.win, lose=stats.lose)
+    team = stats_service.favorite_team(session, current_user.id)
+    nickname = current_user.display_nickname
+    return ShareCard(
+        nickname=nickname,
+        profile_image_url=current_user.profile_image_url,
+        fairy_type=fairy,
+        fairy_label=stats_service.fairy_label(fairy, nickname),
+        stats=stats,
+        favorite_team=TeamPublic.model_validate(team) if team else None,
+    )
 
 
 @router.patch("/profile", response_model=MeProfile)
