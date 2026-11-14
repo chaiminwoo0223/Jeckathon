@@ -83,7 +83,7 @@
 - 화면은 백엔드 이미지에 빌드돼 같은 주소로 나간다(`VITE_API_URL` 비움). 배포마다 migration·시드(`prestart.sh`)가 돈다. 실패하면 워크플로가 빨간불이고 로그 끝에 prestart 로그가 찍힌다.
 - 운영 비밀값(SECRET_KEY, DB·superuser 비밀번호, AI_API_KEY)은 서버 파일에만 있다. 바꿀 일이 있으면 배포 담당(SonAIengine)에게.
 - `deploy/`, `.github/`는 배포 담당 영역이다.
-- 커뮤니티 공간 WS는 Redis가 있어야 한다. 운영 `deploy/home/compose.yml`에 `redis:8-alpine` 서비스와 backend 환경변수 `REDIS_URL: redis://redis:6379/0`이 필요하다(배포 담당에게 요청, 루트 `compose.yml`의 redis 서비스가 예시).
+- 커뮤니티 공간·채팅 WS는 Redis로 워커(`--workers 4`) 사이를 잇는다. 운영 `deploy/home/compose.yml`에 `redis` 서비스(`redis:8-alpine`)와 backend 환경변수 `REDIS_URL: redis://redis:6379/0`이 있다. Redis가 없으면 서버는 뜨지만 이 WS가 모두 실패한다. 워커 수를 1로 줄일 필요는 없다.
 
 ## Git
 
