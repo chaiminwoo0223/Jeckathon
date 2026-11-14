@@ -25,6 +25,39 @@ def test_chat_broadcasts_within_room_only(
         assert (msg["room_id"], msg["text"]) == (2, "hello room 2")
 
 
+def test_chat_four_users_see_same_order(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    superuser_token_headers: dict[str, str],
+) -> None:
+    tokens = [
+        h["Authorization"].removeprefix("Bearer ")
+        for h in (normal_user_token_headers, superuser_token_headers) * 2
+    ]
+    with (
+        client.websocket_connect(f"{WS}/2/ws?token={tokens[0]}") as a,
+        client.websocket_connect(f"{WS}/2/ws?token={tokens[1]}") as b,
+        client.websocket_connect(f"{WS}/2/ws?token={tokens[2]}") as c,
+        client.websocket_connect(f"{WS}/2/ws?token={tokens[3]}") as d,
+    ):
+        people = [a, b, c, d]
+        # 입장 때 받은 이전 기록은 "start"까지 읽고 버린다
+        a.send_text("start")
+        for p in people:
+            while p.receive_json()["text"] != "start":
+                pass
+        sent = []
+        for i in range(3):
+            for n, p in enumerate(people):
+                sent.append(f"p{n}-{i}")
+                p.send_text(sent[-1])
+        got = [[p.receive_json() for _ in sent] for p in people]
+
+    assert all([m["text"] for m in g] == sent for g in got)
+    times = [m["sent_at"] for m in got[0]]
+    assert times == sorted(times)
+
+
 def test_chat_rejects_bad_token_and_unknown_room(
     client: TestClient, normal_user_token_headers: dict[str, str]
 ) -> None:
