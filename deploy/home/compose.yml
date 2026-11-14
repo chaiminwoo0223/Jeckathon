@@ -1,5 +1,5 @@
 # Home server deployment (cheer101.infoedu.co.kr).
-# The backend image also serves the built frontend, so only db + backend run.
+# The backend image also serves the built frontend, so only db + redis + backend run.
 # No ports are published: the home server's Caddy reaches the backend
 # through the shared `caddy_default` network (alias `jeckathon-backend`).
 # Secrets come from an env file on the server, never from this repo.
@@ -13,8 +13,20 @@ x-backend-env: &backend-env
   DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
   FRONTEND_HOST: https://${DOMAIN:?Variable not set}
   AI_API_KEY: ${AI_API_KEY:-}
+  # 공간·채팅 WebSocket은 워커(--workers 4) 사이를 Redis pub/sub으로 잇는다
+  REDIS_URL: redis://redis:6379/0
 
 services:
+  # 공간·채팅 상태(접속자, 최근 채팅 50개). 재시작하면 비어도 된다
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+      timeout: 3s
+
   db:
     image: postgres:18
     restart: unless-stopped
@@ -49,6 +61,8 @@ services:
     restart: unless-stopped
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       prestart:
         condition: service_completed_successfully

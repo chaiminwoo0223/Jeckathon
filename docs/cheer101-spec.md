@@ -332,8 +332,7 @@ Fortune {
 | POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
-| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음). 워커 사이 전달은 Postgres LISTEN/NOTIFY |
-| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스). 20×12 칸 위 접속자 위치·이모트. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간" |
+| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스)과 실시간 채팅을 한 소켓으로. 20×12 칸 위 접속자 위치·이모트·채팅(방마다 최근 50개). 입장한 멤버만. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
 
 **입장 규칙**
 
@@ -376,8 +375,6 @@ Fortune {
 - `leave`는 멤버가 아니어도 성공한다. 나가도 응원 기록은 그대로이고 입장 시간 안이면 다시 들어올 수 있다.
 - `GET /communities/{id}/members`는 로그인한 누구나 볼 수 있고 `{data, count}`를 입장 순으로 돌려준다. 항목은 `user_id`, `nickname`, `profile_image_url`, `level`, `fairy_type`, `fairy_label`, `joined_at`이다(요정은 §3.2 규칙).
 - 대결(§4.6)을 시작하거나 측정값을 보낼 때 커뮤니티 멤버인지는 검사하지 않는다.
-||||||| parent of ff6f64f (feat(space): Redis 기반 커뮤니티 공간(메타버스) WebSocket 추가)
-| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
 
 ### 4.5 랭킹 (폴링)
 
