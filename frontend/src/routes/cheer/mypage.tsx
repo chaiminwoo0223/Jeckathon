@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, Check, Download, Pencil, Share2, X } from "lucide-react"
+import { ArrowLeft, Download, Share2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { AllMatchesDialog } from "@/cheer/components/all-matches-dialog"
@@ -27,7 +27,6 @@ import { downloadShareCard } from "@/cheer/lib/share-image"
 import useAuth from "@/hooks/useAuth"
 
 const RECENT_COUNT = 4
-const NICKNAME_MAX = 20
 
 export const Route = createFileRoute("/cheer/mypage")({
   component: MyPage,
@@ -52,27 +51,10 @@ function MyPage() {
   const { data: me } = useMe()
   const authName =
     me?.nickname || user?.email?.split("@")[0] || ME_PROFILE.nickname
-  // 본인 프로필 닉네임 인라인 편집 (목업: 편집 전까지 로그인 이름을 따라감)
-  const [editedNick, setEditedNick] = useState<string | null>(null)
-  const ownerName = editedNick ?? authName
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState("")
-  const displayNickname = isOwner ? ownerName : profile.nickname
+  const displayNickname = isOwner ? authName : profile.nickname
 
   const seasonWinRate = winRate(profile.stats.win, profile.stats.lose)
   const seasonLoseRate = loseRate(profile.stats.win, profile.stats.lose)
-
-  function startEdit() {
-    setDraft(ownerName)
-    setEditing(true)
-  }
-  function commitEdit() {
-    const next = draft.trim().slice(0, NICKNAME_MAX)
-    setEditing(false)
-    if (!next || next === ownerName) return
-    setEditedNick(next)
-    toast.success("닉네임을 변경했어요 ✨")
-  }
 
   if (notFound) {
     return (
@@ -118,52 +100,9 @@ function MyPage() {
             <Pill color="#fff" bg="rgba(255,255,255,.18)">
               👑 Lv.{profile.level} {profile.levelTitle}
             </Pill>
-            {editing ? (
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  // biome-ignore lint/a11y/noAutofocus: 편집 시작 시 바로 입력
-                  autoFocus
-                  value={draft}
-                  maxLength={NICKNAME_MAX}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commitEdit()
-                    if (e.key === "Escape") setEditing(false)
-                  }}
-                  className="min-w-0 flex-1 rounded-lg bg-white/90 px-2.5 py-1 text-xl font-black text-[var(--c-ink)] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={commitEdit}
-                  aria-label="닉네임 저장"
-                  className="grid size-8 place-items-center rounded-lg bg-white/25 hover:bg-white/35"
-                >
-                  <Check size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  aria-label="편집 취소"
-                  className="grid size-8 place-items-center rounded-lg bg-white/15 hover:bg-white/25"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <h2 className="mt-2 flex items-center gap-2 text-2xl font-black">
-                {displayNickname}
-                {isOwner && (
-                  <button
-                    type="button"
-                    onClick={startEdit}
-                    aria-label="닉네임 편집"
-                    className="opacity-70 transition-opacity hover:opacity-100"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                )}
-              </h2>
-            )}
+            <h2 className="mt-2 flex items-center gap-2 text-2xl font-black">
+              {displayNickname}
+            </h2>
             <p className="text-sm text-white/80">{profile.bio}</p>
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs font-bold text-white/70">응원팀</span>
