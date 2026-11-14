@@ -63,6 +63,50 @@ def test_space_join_move_leave(
         assert msg == {"type": "leave", "user_id": b_id}
 
 
+def test_space_chat_same_order_for_everyone_and_history(
+    client: TestClient,
+    db: Session,
+    normal_user_token_headers: dict[str, str],
+    superuser_token_headers: dict[str, str],
+) -> None:
+    match = db.exec(select(Match)).first()
+    assert match is not None
+    cid = get_or_create_community(db, match.id).id
+    for email in (settings.EMAIL_TEST_USER, settings.FIRST_SUPERUSER):
+        user = db.exec(select(User).where(User.email == email)).one()
+        if db.get(CommunityMember, (cid, user.id)) is None:
+            db.add(CommunityMember(community_id=cid, user_id=user.id))
+    db.commit()
+    redis.Redis.from_url(settings.REDIS_URL).delete(f"space:{cid}:chat")
+
+    def chats(ws: object, n: int) -> list[str]:
+        got: list[str] = []
+        while len(got) < n:
+            msg = ws.receive_json()  # type: ignore[attr-defined]
+            if msg["type"] == "chat":
+                got.append(msg["text"])
+        return got
+
+    with (
+        client.websocket_connect(_url(cid, normal_user_token_headers)) as a,
+        client.websocket_connect(_url(cid, superuser_token_headers)) as b,
+    ):
+        assert a.receive_json()["chat"] == []
+        b.receive_json()
+        sent = []
+        for i in range(3):
+            for name, ws in (("a", a), ("b", b)):
+                sent.append(f"{name}{i}")
+                ws.send_json({"type": "chat", "text": f"  {sent[-1]}  "})
+        a.send_json({"type": "chat", "text": "   "})  # 빈 글은 버린다
+        assert chats(a, 6) == sent
+        assert chats(b, 6) == sent
+
+    # 나중에 들어온 사람은 snapshot의 chat으로 최근 기록을 받는다
+    with client.websocket_connect(_url(cid, normal_user_token_headers)) as c:
+        assert [m["text"] for m in c.receive_json()["chat"]] == sent
+
+
 def _community_without(db: Session, email: str) -> uuid.UUID:
     """그 사람이 입장하지 않은 커뮤니티 하나."""
     user = db.exec(select(User).where(User.email == email)).one()

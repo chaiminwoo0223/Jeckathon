@@ -18,10 +18,14 @@ from app.models import (
     BattleResult,
     BattleState,
     BattleStatus,
+    BattleTopEntry,
     Community,
     LeaderboardEntry,
+    PointReason,
+    PointTransaction,
     User,
 )
+from app.services import settlement
 
 router = APIRouter(tags=["battles"])
 
@@ -36,12 +40,40 @@ def _get_battle(session: SessionDep, id: uuid.UUID) -> Battle:
         and battle.ends_at
         and datetime.now(UTC) >= battle.ends_at
     ):
-        # shortcut: TOP3 포인트(100/50/30)는 아직 안 준다. BE-1 settlement.py 지급 함수가 생기면 여기서 호출
-        battle.status = BattleStatus.FINISHED
-        session.add(battle)
-        session.commit()
-        session.refresh(battle)
+        _finish(session, battle.id)
     return battle
+
+
+def _finish(session: SessionDep, battle_id: uuid.UUID) -> None:
+    """종료 전환 + TOP3 포인트 + 데시벨 배지를 한 트랜잭션으로 한다.
+
+    대결 행을 잠그고 다시 읽어서, 동시에 폴링해도 ONGOING을 본 한 요청만 정산한다.
+    """
+    battle = session.exec(
+        select(Battle)
+        .where(Battle.id == battle_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    if battle.status != BattleStatus.ONGOING:
+        session.commit()  # 다른 요청이 이미 정산함. 잠금만 푼다
+        return
+    battle.status = BattleStatus.FINISHED
+    session.add(battle)
+    board = _leaderboard(session, battle.id)
+    top3 = zip(board, settlement.DECIBEL_TOP3_POINTS, strict=False)
+    # 유저 id 순으로 지급해 경기 정산과 잠금 순서를 맞춘다(데드락 방지)
+    for entry, points in sorted(top3, key=lambda t: t[0].user_id):
+        settlement.grant_points(
+            session,
+            entry.user_id,
+            points,
+            PointReason.DECIBEL_TOP3,
+            related_id=str(battle.id),
+        )
+    for entry in board:
+        settlement.evaluate_badges(session, entry.user_id, peak_db=entry.peak_db)
+    session.commit()
 
 
 def _leaderboard(session: SessionDep, battle_id: uuid.UUID) -> list[LeaderboardEntry]:
@@ -143,8 +175,18 @@ def submit_record(
     """
     측정 중 peak dB 제출. 측정하는 동안 계속 보내도 되고, 서버는 최댓값만 남긴다. 응답은 갱신된 대결 상태.
     """
-    battle = _get_battle(session, id)
-    if battle.status != BattleStatus.ONGOING:
+    _get_battle(session, id)
+    # 공유 잠금(FOR SHARE)으로 다시 읽는다. 정산(FOR UPDATE)과 겹치면 정산이 끝날 때까지 기다려 409가 되고,
+    # 제출이 먼저 잠그면 정산이 이 제출의 커밋을 기다려 순위에 반영한다
+    battle = session.exec(
+        select(Battle)
+        .where(Battle.id == id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).one()
+    if battle.status != BattleStatus.ONGOING or (
+        battle.ends_at and datetime.now(UTC) >= battle.ends_at
+    ):
         raise HTTPException(status_code=409, detail="Battle is not ongoing")
 
     joined = session.exec(
@@ -187,7 +229,7 @@ def read_battle_result(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
 ) -> Any:
     """
-    종료 후 TOP3, 내 기록, 내 상위 %.
+    종료 후 TOP3(받은 포인트 포함), 내 기록, 내 상위 %, 내가 받은 포인트.
     """
     battle = _get_battle(session, id)
     if battle.status != BattleStatus.FINISHED:
@@ -195,10 +237,23 @@ def read_battle_result(
     board = _leaderboard(session, battle.id)
     me = _me(board, current_user.id)
     top = math.ceil(me.rank / len(board) * 100) if me.rank else None
+    # 실제 지급 내역에서 읽는다(순위로 다시 계산하지 않음)
+    paid = dict(
+        session.exec(
+            select(PointTransaction.user_id, PointTransaction.amount).where(
+                PointTransaction.reason == PointReason.DECIBEL_TOP3,
+                PointTransaction.related_id == str(battle.id),
+            )
+        ).all()
+    )
     return BattleResult(
         id=battle.id,
-        top3=board[:3],
+        top3=[
+            BattleTopEntry(**e.model_dump(), points=paid.get(e.user_id, 0))
+            for e in board[:3]
+        ],
         me=me,
         my_top_percent=top,
         participants=len(board),
+        my_points=paid.get(current_user.id, 0),
     )
