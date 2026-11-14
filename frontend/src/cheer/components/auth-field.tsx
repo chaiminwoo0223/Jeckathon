@@ -10,7 +10,7 @@ export function AuthField({
   autoComplete,
 }: {
   label: string
-  type?: "text" | "password"
+  type?: "text" | "password" | "email"
   value: string
   onChange: (v: string) => void
   placeholder?: string
