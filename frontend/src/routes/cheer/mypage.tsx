@@ -20,12 +20,15 @@ import {
   SEASON_WINRATE,
   formatKDate,
 } from "@/cheer/data/mock"
+import useAuth from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/cheer/mypage")({
   component: MyPage,
 })
 
 function MyPage() {
+  const { user } = useAuth()
+  const displayName = user?.full_name || user?.email?.split("@")[0] || ME.nickname
   return (
     <div className="cheer-reveal space-y-6">
       <div className="flex items-center justify-between">
@@ -46,7 +49,7 @@ function MyPage() {
           <div className="min-w-0 flex-1">
             <Pill color="#fff" bg="rgba(255,255,255,.18)">👑 Lv.{ME.level} {ME.levelTitle}</Pill>
             <h2 className="mt-2 flex items-center gap-2 text-2xl font-black">
-              {ME.nickname} <Pencil size={16} className="opacity-70" />
+              {displayName} <Pencil size={16} className="opacity-70" />
             </h2>
             <p className="text-sm text-white/80">{ME.bio}</p>
             <div className="mt-3 flex items-center gap-2">
@@ -175,7 +178,7 @@ function MyPage() {
           </div>
         </SectionCard>
 
-        <ShareCard />
+        <ShareCard name={displayName} />
       </div>
     </div>
   )
@@ -252,7 +255,7 @@ function Donut({ winRate }: { winRate: number }) {
   )
 }
 
-function ShareCard() {
+function ShareCard({ name }: { name: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-[22px] cheer-hero p-6 text-center text-white shadow-[var(--shadow-card)]">
@@ -262,7 +265,7 @@ function ShareCard() {
         </p>
         <p className="text-xs text-white/70">{SEASON_STATS.total}경기 응원</p>
         <div className="my-3"><Mascot size="lg" float className="mx-auto" /></div>
-        <p className="text-lg font-black">👑 승리요정 {ME.nickname}</p>
+        <p className="text-lg font-black">👑 승리요정 {name}</p>
         <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/18 px-3 py-1 text-xs font-bold">
           <TeamLogo team={ME.favoriteTeam} size={16} /> 최애팀 {ME.favoriteTeam.name}
         </span>
