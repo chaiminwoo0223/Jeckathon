@@ -193,6 +193,86 @@ export const MY_RECORDS: CheerRecord[] = [
     },
     cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
   },
+  {
+    id: 5,
+    match: {
+      id: 94, home: TEAMS.arsenal, away: TEAMS.mancity, league: "프리미어리그",
+      kickoffAt: "2026-10-18T20:30:00", status: "FINISHED", homeScore: 2, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 6,
+    match: {
+      id: 95, home: TEAMS.liverpool, away: TEAMS.tottenham, league: "프리미어리그",
+      kickoffAt: "2026-10-12T22:00:00", status: "FINISHED", homeScore: 3, awayScore: 3,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "DRAW", pointsEarned: 50,
+  },
+  {
+    id: 7,
+    match: {
+      id: 96, home: TEAMS.chelsea, away: TEAMS.tottenham, league: "프리미어리그",
+      kickoffAt: "2026-10-05T23:30:00", status: "FINISHED", homeScore: 2, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 8,
+    match: {
+      id: 97, home: TEAMS.arsenal, away: TEAMS.liverpool, league: "프리미어리그",
+      kickoffAt: "2026-09-28T20:30:00", status: "FINISHED", homeScore: 1, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 9,
+    match: {
+      id: 98, home: TEAMS.barcelona, away: TEAMS.realmadrid, league: "라리가",
+      kickoffAt: "2026-09-21T23:00:00", status: "FINISHED", homeScore: 0, awayScore: 2,
+    },
+    cheeredTeamId: TEAMS.barcelona.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 10,
+    match: {
+      id: 99, home: TEAMS.tottenham, away: TEAMS.mancity, league: "프리미어리그",
+      kickoffAt: "2026-09-14T20:30:00", status: "FINISHED", homeScore: 4, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 11,
+    match: {
+      id: 110, home: TEAMS.arsenal, away: TEAMS.chelsea, league: "프리미어리그",
+      kickoffAt: "2026-09-07T22:00:00", status: "FINISHED", homeScore: 2, awayScore: 2,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "DRAW", pointsEarned: 50,
+  },
+  {
+    id: 12,
+    match: {
+      id: 111, home: TEAMS.realmadrid, away: TEAMS.arsenal, league: "친선경기",
+      kickoffAt: "2026-08-30T04:00:00", status: "FINISHED", homeScore: 1, awayScore: 3,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 13,
+    match: {
+      id: 112, home: TEAMS.liverpool, away: TEAMS.arsenal, league: "프리미어리그",
+      kickoffAt: "2026-08-23T22:00:00", status: "FINISHED", homeScore: 2, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 14,
+    match: {
+      id: 113, home: TEAMS.tottenham, away: TEAMS.barcelona, league: "친선경기",
+      kickoffAt: "2026-08-16T20:30:00", status: "FINISHED", homeScore: 3, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "WIN", pointsEarned: 100,
+  },
 ]
 
 // 시즌 통계 (목업 기준 42경기)
