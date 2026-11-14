@@ -26,6 +26,7 @@ api_router.include_router(matches.router)
 api_router.include_router(me.router)
 api_router.include_router(admin.router)
 api_router.include_router(communities.router)
+api_router.include_router(communities.match_router)
 api_router.include_router(battles.router)
 api_router.include_router(chat.router)
 

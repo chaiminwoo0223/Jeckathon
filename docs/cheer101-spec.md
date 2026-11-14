@@ -362,6 +362,15 @@ Fortune {
 - 프론트는 날짜별 목록을 보여주고, 입장 초대장을 하나씩 보여주며, `canEnter=false`인 초대장은 입장 버튼을 비활성화한다.
 - (JSON 필드는 구현에서 snake_case다: `server_now`, `enter_opens_at`, `can_enter` 등)
 
+**구현 메모 (§4.4)**
+
+- 시각은 UTC(타임존 포함 ISO)로 내려간다. 위 예시의 `+09:00`은 표기용이고, 날짜별 묶음(`days[].date`)만 KST 기준이다.
+- `GET /matches/{id}/community`와 `POST /communities/{id}/join`, `POST /communities/{id}/leave`는 갱신된 커뮤니티 정보 `{id, match_id, member_count, joined, enter_opens_at, can_enter}`를 돌려준다. 커뮤니티는 이 API를 처음 부를 때 만들어진다.
+- `join` 거절은 `detail`이 객체다: `{"code": "NOT_CHEERED"}`(403), `{"code": "NOT_OPEN_YET", "enter_opens_at": ...}`(403), `{"code": "MATCH_FINISHED"}`(409). 검사 순서는 응원 신청 → 종료 → 입장 시간이다. 존재하지 않는 커뮤니티는 404.
+- `leave`는 멤버가 아니어도 성공한다. 나가도 응원 기록은 그대로이고 입장 시간 안이면 다시 들어올 수 있다.
+- `GET /communities/{id}/members`는 로그인한 누구나 볼 수 있고 `{data, count}`를 입장 순으로 돌려준다. 항목은 `user_id`, `nickname`, `profile_image_url`, `level`, `fairy_type`, `fairy_label`, `joined_at`이다(요정은 §3.2 규칙).
+- 대결(§4.6)을 시작하거나 측정값을 보낼 때 커뮤니티 멤버인지는 검사하지 않는다.
+
 ### 4.5 랭킹 (폴링)
 
 | Method | Path | 설명 |
