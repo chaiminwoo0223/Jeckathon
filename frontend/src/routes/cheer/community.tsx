@@ -258,36 +258,37 @@ function Measuring({
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
-        <SectionCard className="relative overflow-hidden">
-          <div className="flex flex-col items-center py-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[var(--c-ink-soft)]">
-              <Mascot size="sm" /> 응원 소리로 데시벨을 높여보세요!
-            </div>
-            <DecibelMeter db={db} active label={hitTarget ? "와! 지금 엄청난 응원이에요! 🔥" : "조금만 더 크게!"} />
-            <div className="mt-4 flex items-center gap-6">
-              <div className="text-center">
-                <p className="text-xs font-bold text-[var(--c-muted)]">목표 데시벨</p>
-                <p className="text-lg font-black text-[var(--c-primary)]">{TARGET_DB}dB+</p>
-              </div>
-              <div className="h-8 w-px bg-[var(--c-line)]" />
-              <div className="text-center">
-                <p className="text-xs font-bold text-[var(--c-muted)]">내 최고</p>
-                <p className="text-lg font-black">{peak.toFixed(1)}dB</p>
-              </div>
-              <div className="h-8 w-px bg-[var(--c-line)]" />
-              <div className="text-center">
-                <p className="text-xs font-bold text-[var(--c-muted)]">현재 순위</p>
-                <p className="text-lg font-black text-[var(--c-gold)]">{myRank}위</p>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
+      <div className="grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
+        {/* main: live stream */}
+        <VideoStream home={TODAY_MATCH.home} away={TODAY_MATCH.away} />
 
-        {/* stream + live chat */}
+        {/* side: decibel meter + live chat */}
         <div className="space-y-5">
-          <VideoStream home={TODAY_MATCH.home} away={TODAY_MATCH.away} compact />
-          <LiveChat heightClass="h-[220px]" />
+          <SectionCard className="relative overflow-hidden">
+            <div className="flex flex-col items-center py-1">
+              <div className="mb-2 flex items-center gap-2 text-center text-xs font-bold text-[var(--c-ink-soft)]">
+                <Mascot size="sm" /> 응원 소리로 데시벨을 높여보세요!
+              </div>
+              <DecibelMeter db={db} active size={220} label={hitTarget ? "엄청난 응원이에요! 🔥" : "조금만 더 크게!"} />
+              <div className="mt-3 flex items-center gap-4">
+                <div className="text-center">
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">목표</p>
+                  <p className="text-base font-black text-[var(--c-primary)]">{TARGET_DB}dB+</p>
+                </div>
+                <div className="h-7 w-px bg-[var(--c-line)]" />
+                <div className="text-center">
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">내 최고</p>
+                  <p className="text-base font-black">{peak.toFixed(1)}dB</p>
+                </div>
+                <div className="h-7 w-px bg-[var(--c-line)]" />
+                <div className="text-center">
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">순위</p>
+                  <p className="text-base font-black text-[var(--c-gold)]">{myRank}위</p>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+          <LiveChat heightClass="h-[200px]" />
         </div>
       </div>
     </div>
