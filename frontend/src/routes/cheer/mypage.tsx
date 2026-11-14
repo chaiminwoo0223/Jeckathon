@@ -25,15 +25,9 @@ import {
 import { useMe } from "@/cheer/hooks/use-me"
 import { downloadShareCard } from "@/cheer/lib/share-image"
 import useAuth from "@/hooks/useAuth"
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const RECENT_COUNT = 4
 const NICKNAME_MAX = 20
-
-function profileShareUrl(id: number) {
-  if (typeof window === "undefined") return ""
-  return `${window.location.origin}/cheer/mypage?u=${id}`
-}
 
 export const Route = createFileRoute("/cheer/mypage")({
   component: MyPage,
@@ -53,7 +47,6 @@ function MyPage() {
   const notFound = u != null && getProfile(u) === undefined
 
   const [allMatchesOpen, setAllMatchesOpen] = useState(false)
-  const [, copy] = useCopyToClipboard()
 
   // 본인 이름은 실제 로그인 사용자 기준, 없으면 목업 닉네임
   const { data: me } = useMe()
@@ -68,12 +61,6 @@ function MyPage() {
 
   const seasonWinRate = winRate(profile.stats.win, profile.stats.lose)
   const seasonLoseRate = loseRate(profile.stats.win, profile.stats.lose)
-
-  async function handleShare() {
-    const ok = await copy(profileShareUrl(profile.id))
-    if (ok) toast.success("프로필 링크를 복사했어요 🔗")
-    else toast.error("링크 복사에 실패했어요. 다시 시도해 주세요")
-  }
 
   function startEdit() {
     setDraft(ownerName)
@@ -121,13 +108,6 @@ function MyPage() {
             {isOwner ? "마이페이지" : `${profile.nickname}님의 프로필`}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[var(--c-surface)] px-4 py-2 text-sm font-bold shadow-sm"
-        >
-          <Share2 size={15} /> 프로필 공유
-        </button>
       </div>
 
       {/* profile header */}
