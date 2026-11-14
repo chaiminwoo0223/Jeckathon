@@ -5,6 +5,131 @@ export type ClientOptions = {
 };
 
 /**
+ * AuthCredentials
+ *
+ * 가입·로그인 공용. 아이디는 영문·숫자·밑줄 4~20자이고 대소문자를 구분하지 않는다.
+ */
+export type AuthCredentials = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Password
+     */
+    password: string;
+};
+
+/**
+ * AuthResponse
+ */
+export type AuthResponse = {
+    /**
+     * Access Token
+     */
+    access_token: string;
+    /**
+     * Token Type
+     */
+    token_type?: string;
+    user: MeProfile;
+};
+
+/**
+ * BattleCreate
+ */
+export type BattleCreate = {
+    /**
+     * Duration Sec
+     */
+    duration_sec?: number;
+};
+
+/**
+ * BattleMe
+ */
+export type BattleMe = {
+    /**
+     * Rank
+     */
+    rank?: number | null;
+    /**
+     * Peak Db
+     */
+    peak_db?: number | null;
+};
+
+/**
+ * BattleRecordSubmit
+ */
+export type BattleRecordSubmit = {
+    /**
+     * Peak Db
+     */
+    peak_db: number;
+};
+
+/**
+ * BattleResult
+ */
+export type BattleResult = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Top3
+     */
+    top3: Array<LeaderboardEntry>;
+    me: BattleMe;
+    /**
+     * My Top Percent
+     */
+    my_top_percent?: number | null;
+    /**
+     * Participants
+     */
+    participants: number;
+};
+
+/**
+ * BattleState
+ */
+export type BattleState = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Community Id
+     */
+    community_id: string;
+    status: BattleStatus;
+    /**
+     * Remaining Sec
+     */
+    remaining_sec: number;
+    /**
+     * Ends At
+     */
+    ends_at: string | null;
+    /**
+     * Max Players
+     */
+    max_players: number;
+    /**
+     * Leaderboard
+     */
+    leaderboard: Array<LeaderboardEntry>;
+    me: BattleMe;
+};
+
+/**
+ * BattleStatus
+ */
+export type BattleStatus = 'WAITING' | 'ONGOING' | 'FINISHED';
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -33,6 +158,268 @@ export type Body_login_login_access_token = {
      */
     client_secret?: string | null;
 };
+
+/**
+ * CheerIn
+ */
+export type CheerIn = {
+    /**
+     * Cheered Team Id
+     */
+    cheered_team_id: string;
+};
+
+/**
+ * CheerRecordItem
+ */
+export type CheerRecordItem = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Match Id
+     */
+    match_id: string;
+    /**
+     * Cheered Team Id
+     */
+    cheered_team_id: string;
+    result: CheerResult;
+    /**
+     * Points Earned
+     */
+    points_earned: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    match: MatchDetail;
+};
+
+/**
+ * CheerRecordPublic
+ */
+export type CheerRecordPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Match Id
+     */
+    match_id: string;
+    /**
+     * Cheered Team Id
+     */
+    cheered_team_id: string;
+    result: CheerResult;
+    /**
+     * Points Earned
+     */
+    points_earned: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * CheerRecordsPublic
+ */
+export type CheerRecordsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CheerRecordItem>;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Size
+     */
+    size: number;
+};
+
+/**
+ * CheerResult
+ */
+export type CheerResult = 'PENDING' | 'WIN' | 'DRAW' | 'LOSE';
+
+/**
+ * CommunitiesMine
+ */
+export type CommunitiesMine = {
+    /**
+     * Server Now
+     */
+    server_now: string;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Days
+     */
+    days: Array<CommunityMineDay>;
+};
+
+/**
+ * CommunityBrief
+ */
+export type CommunityBrief = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Member Count
+     */
+    member_count: number;
+    /**
+     * Joined
+     */
+    joined: boolean;
+};
+
+/**
+ * CommunityInfo
+ *
+ * 경기별 커뮤니티와 내 입장 상태. 초대장 화면이 쓴다.
+ */
+export type CommunityInfo = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Match Id
+     */
+    match_id: string;
+    /**
+     * Member Count
+     */
+    member_count: number;
+    /**
+     * Joined
+     */
+    joined: boolean;
+    /**
+     * Enter Opens At
+     */
+    enter_opens_at: string;
+    /**
+     * Can Enter
+     */
+    can_enter: boolean;
+};
+
+/**
+ * CommunityMemberPublic
+ */
+export type CommunityMemberPublic = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Profile Image Url
+     */
+    profile_image_url: string | null;
+    /**
+     * Level
+     */
+    level: number;
+    fairy_type: FairyType;
+    /**
+     * Fairy Label
+     */
+    fairy_label: string;
+    /**
+     * Joined At
+     */
+    joined_at: string;
+};
+
+/**
+ * CommunityMembersPublic
+ */
+export type CommunityMembersPublic = {
+    /**
+     * Data
+     */
+    data: Array<CommunityMemberPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * CommunityMineDay
+ */
+export type CommunityMineDay = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Items
+     */
+    items: Array<CommunityMineItem>;
+};
+
+/**
+ * CommunityMineItem
+ */
+export type CommunityMineItem = {
+    match: MatchDetail;
+    /**
+     * Cheered Team Id
+     */
+    cheered_team_id: string;
+    community: CommunityBrief;
+    /**
+     * Enter Opens At
+     */
+    enter_opens_at: string;
+    /**
+     * Can Enter
+     */
+    can_enter: boolean;
+};
+
+/**
+ * CommunityPublic
+ */
+export type CommunityPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Match Id
+     */
+    match_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * FairyType
+ */
+export type FairyType = 'VICTORY' | 'DEFEAT' | 'NEUTRAL';
 
 /**
  * HTTPValidationError
@@ -113,6 +500,28 @@ export type ItemsPublic = {
 };
 
 /**
+ * LeaderboardEntry
+ */
+export type LeaderboardEntry = {
+    /**
+     * Rank
+     */
+    rank: number;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Peak Db
+     */
+    peak_db: number;
+};
+
+/**
  * MatchDay
  */
 export type MatchDay = {
@@ -178,6 +587,43 @@ export type MatchDetail = {
 };
 
 /**
+ * MatchFinishIn
+ */
+export type MatchFinishIn = {
+    /**
+     * Home Score
+     */
+    home_score: number;
+    /**
+     * Away Score
+     */
+    away_score: number;
+};
+
+/**
+ * MatchFinishOut
+ */
+export type MatchFinishOut = {
+    match: MatchDetail;
+    /**
+     * Settled
+     */
+    settled: number;
+    /**
+     * Win
+     */
+    win: number;
+    /**
+     * Draw
+     */
+    draw: number;
+    /**
+     * Lose
+     */
+    lose: number;
+};
+
+/**
  * MatchStatus
  */
 export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED';
@@ -219,6 +665,76 @@ export type MatchesToday = {
 };
 
 /**
+ * MeProfile
+ */
+export type MeProfile = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Bio
+     */
+    bio: string;
+    /**
+     * Profile Image Url
+     */
+    profile_image_url: string | null;
+    /**
+     * Level
+     */
+    level: number;
+    /**
+     * Total Points
+     */
+    total_points: number;
+};
+
+/**
+ * MeSummary
+ */
+export type MeSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Nickname
+     */
+    nickname: string;
+    /**
+     * Bio
+     */
+    bio: string;
+    /**
+     * Profile Image Url
+     */
+    profile_image_url: string | null;
+    /**
+     * Level
+     */
+    level: number;
+    /**
+     * Total Points
+     */
+    total_points: number;
+    fairy_type: FairyType;
+    /**
+     * Fairy Label
+     */
+    fairy_label: string;
+    stats: StatsPublic;
+    /**
+     * Teams
+     */
+    teams: Array<TeamPublic>;
+};
+
+/**
  * Message
  */
 export type Message = {
@@ -243,25 +759,74 @@ export type NewPassword = {
 };
 
 /**
- * PrivateUserCreate
+ * ProfileUpdate
  */
-export type PrivateUserCreate = {
+export type ProfileUpdate = {
     /**
-     * Email
+     * Nickname
      */
-    email: string;
+    nickname?: string | null;
     /**
-     * Password
+     * Bio
      */
-    password: string;
+    bio?: string | null;
     /**
-     * Full Name
+     * Profile Image Url
      */
-    full_name: string;
+    profile_image_url?: string | null;
+};
+
+/**
+ * ShareCard
+ *
+ * SNS 공유 카드에 그리는 값. 이미지는 프론트가 만든다.
+ */
+export type ShareCard = {
     /**
-     * Is Verified
+     * Nickname
      */
-    is_verified?: boolean;
+    nickname: string;
+    /**
+     * Profile Image Url
+     */
+    profile_image_url: string | null;
+    fairy_type: FairyType;
+    /**
+     * Fairy Label
+     */
+    fairy_label: string;
+    stats: StatsPublic;
+    favorite_team: TeamPublic | null;
+};
+
+/**
+ * StatsPublic
+ */
+export type StatsPublic = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Win
+     */
+    win: number;
+    /**
+     * Draw
+     */
+    draw: number;
+    /**
+     * Lose
+     */
+    lose: number;
+    /**
+     * Win Rate
+     */
+    win_rate: number;
+    /**
+     * Lose Rate
+     */
+    lose_rate: number;
 };
 
 /**
@@ -357,10 +922,6 @@ export type UserCreate = {
      */
     is_superuser?: boolean;
     /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
      * Password
      */
     password: string;
@@ -383,10 +944,6 @@ export type UserPublic = {
      */
     is_superuser?: boolean;
     /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
      * Id
      */
     id: string;
@@ -408,10 +965,84 @@ export type UserRegister = {
      * Password
      */
     password: string;
+};
+
+/**
+ * UserSettingPublic
+ */
+export type UserSettingPublic = {
     /**
-     * Full Name
+     * Notify Match Schedule
      */
-    full_name?: string | null;
+    notify_match_schedule?: boolean;
+    /**
+     * Notify Community Invite
+     */
+    notify_community_invite?: boolean;
+    /**
+     * Notify Ranking Reward
+     */
+    notify_ranking_reward?: boolean;
+    /**
+     * Notify Service
+     */
+    notify_service?: boolean;
+    /**
+     * Auto Join Community
+     */
+    auto_join_community?: boolean;
+    /**
+     * Mic Permission
+     */
+    mic_permission?: boolean;
+    /**
+     * Ranking Public
+     */
+    ranking_public?: boolean;
+};
+
+/**
+ * UserSettingUpdate
+ */
+export type UserSettingUpdate = {
+    /**
+     * Notify Match Schedule
+     */
+    notify_match_schedule?: boolean | null;
+    /**
+     * Notify Community Invite
+     */
+    notify_community_invite?: boolean | null;
+    /**
+     * Notify Ranking Reward
+     */
+    notify_ranking_reward?: boolean | null;
+    /**
+     * Notify Service
+     */
+    notify_service?: boolean | null;
+    /**
+     * Auto Join Community
+     */
+    auto_join_community?: boolean | null;
+    /**
+     * Mic Permission
+     */
+    mic_permission?: boolean | null;
+    /**
+     * Ranking Public
+     */
+    ranking_public?: boolean | null;
+};
+
+/**
+ * UserTeamAdd
+ */
+export type UserTeamAdd = {
+    /**
+     * Team Id
+     */
+    team_id: string;
 };
 
 /**
@@ -431,10 +1062,6 @@ export type UserUpdate = {
      */
     is_superuser?: boolean | null;
     /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
      * Password
      */
     password?: string | null;
@@ -445,13 +1072,23 @@ export type UserUpdate = {
  */
 export type UserUpdateMe = {
     /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
      * Email
      */
     email?: string | null;
+};
+
+/**
+ * UsernameCheck
+ */
+export type UsernameCheck = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Available
+     */
+    available: boolean;
 };
 
 /**
@@ -520,6 +1157,86 @@ export type loginLoginAccessTokenResponses = {
 };
 
 export type loginLoginAccessTokenResponse = loginLoginAccessTokenResponses[keyof loginLoginAccessTokenResponses];
+
+export type loginCheckUsernameData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    url: '/api/v1/auth/check-username';
+};
+
+export type loginCheckUsernameErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type loginCheckUsernameError = loginCheckUsernameErrors[keyof loginCheckUsernameErrors];
+
+export type loginCheckUsernameResponses = {
+    /**
+     * Successful Response
+     */
+    200: UsernameCheck;
+};
+
+export type loginCheckUsernameResponse = loginCheckUsernameResponses[keyof loginCheckUsernameResponses];
+
+export type loginSignupData = {
+    body: AuthCredentials;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/signup';
+};
+
+export type loginSignupErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type loginSignupError = loginSignupErrors[keyof loginSignupErrors];
+
+export type loginSignupResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthResponse;
+};
+
+export type loginSignupResponse = loginSignupResponses[keyof loginSignupResponses];
+
+export type loginLoginData = {
+    body: AuthCredentials;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/login';
+};
+
+export type loginLoginErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type loginLoginError = loginLoginErrors[keyof loginLoginErrors];
+
+export type loginLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthResponse;
+};
+
+export type loginLoginResponse = loginLoginResponses[keyof loginLoginResponses];
 
 export type loginTestTokenData = {
     body?: never;
@@ -1167,27 +1884,556 @@ export type matchesReadMatchResponses = {
 
 export type matchesReadMatchResponse = matchesReadMatchResponses[keyof matchesReadMatchResponses];
 
-export type privateCreateUserData = {
-    body: PrivateUserCreate;
-    path?: never;
+export type matchesCheerMatchData = {
+    body: CheerIn;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
     query?: never;
-    url: '/api/v1/private/users/';
+    url: '/api/v1/matches/{id}/cheer';
 };
 
-export type privateCreateUserErrors = {
+export type matchesCheerMatchErrors = {
     /**
      * Validation Error
      */
     422: HTTPValidationError;
 };
 
-export type privateCreateUserError = privateCreateUserErrors[keyof privateCreateUserErrors];
+export type matchesCheerMatchError = matchesCheerMatchErrors[keyof matchesCheerMatchErrors];
 
-export type privateCreateUserResponses = {
+export type matchesCheerMatchResponses = {
     /**
      * Successful Response
      */
-    200: UserPublic;
+    200: CheerRecordPublic;
 };
 
-export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];
+export type matchesCheerMatchResponse = matchesCheerMatchResponses[keyof matchesCheerMatchResponses];
+
+export type meReadMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me';
+};
+
+export type meReadMeResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeSummary;
+};
+
+export type meReadMeResponse = meReadMeResponses[keyof meReadMeResponses];
+
+export type meReadMyRecordsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Size
+         */
+        size?: number;
+    };
+    url: '/api/v1/me/records';
+};
+
+export type meReadMyRecordsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meReadMyRecordsError = meReadMyRecordsErrors[keyof meReadMyRecordsErrors];
+
+export type meReadMyRecordsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CheerRecordsPublic;
+};
+
+export type meReadMyRecordsResponse = meReadMyRecordsResponses[keyof meReadMyRecordsResponses];
+
+export type meReadMyStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/stats';
+};
+
+export type meReadMyStatsResponses = {
+    /**
+     * Successful Response
+     */
+    200: StatsPublic;
+};
+
+export type meReadMyStatsResponse = meReadMyStatsResponses[keyof meReadMyStatsResponses];
+
+export type meReadShareCardData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/share-card';
+};
+
+export type meReadShareCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: ShareCard;
+};
+
+export type meReadShareCardResponse = meReadShareCardResponses[keyof meReadShareCardResponses];
+
+export type meUpdateProfileData = {
+    body: ProfileUpdate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/profile';
+};
+
+export type meUpdateProfileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meUpdateProfileError = meUpdateProfileErrors[keyof meUpdateProfileErrors];
+
+export type meUpdateProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeProfile;
+};
+
+export type meUpdateProfileResponse = meUpdateProfileResponses[keyof meUpdateProfileResponses];
+
+export type meReadSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/settings';
+};
+
+export type meReadSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserSettingPublic;
+};
+
+export type meReadSettingsResponse = meReadSettingsResponses[keyof meReadSettingsResponses];
+
+export type meUpdateSettingsData = {
+    body: UserSettingUpdate;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/settings';
+};
+
+export type meUpdateSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meUpdateSettingsError = meUpdateSettingsErrors[keyof meUpdateSettingsErrors];
+
+export type meUpdateSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserSettingPublic;
+};
+
+export type meUpdateSettingsResponse = meUpdateSettingsResponses[keyof meUpdateSettingsResponses];
+
+export type meReadMyTeamsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/teams';
+};
+
+export type meReadMyTeamsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TeamsPublic;
+};
+
+export type meReadMyTeamsResponse = meReadMyTeamsResponses[keyof meReadMyTeamsResponses];
+
+export type meAddMyTeamData = {
+    body: UserTeamAdd;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/teams';
+};
+
+export type meAddMyTeamErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meAddMyTeamError = meAddMyTeamErrors[keyof meAddMyTeamErrors];
+
+export type meAddMyTeamResponses = {
+    /**
+     * Successful Response
+     */
+    200: TeamsPublic;
+};
+
+export type meAddMyTeamResponse = meAddMyTeamResponses[keyof meAddMyTeamResponses];
+
+export type meRemoveMyTeamData = {
+    body?: never;
+    path: {
+        /**
+         * Team Id
+         */
+        team_id: string;
+    };
+    query?: never;
+    url: '/api/v1/me/teams/{team_id}';
+};
+
+export type meRemoveMyTeamErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type meRemoveMyTeamError = meRemoveMyTeamErrors[keyof meRemoveMyTeamErrors];
+
+export type meRemoveMyTeamResponses = {
+    /**
+     * Successful Response
+     */
+    200: TeamsPublic;
+};
+
+export type meRemoveMyTeamResponse = meRemoveMyTeamResponses[keyof meRemoveMyTeamResponses];
+
+export type adminFinishMatchData = {
+    body: MatchFinishIn;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/admin/matches/{id}/finish';
+};
+
+export type adminFinishMatchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminFinishMatchError = adminFinishMatchErrors[keyof adminFinishMatchErrors];
+
+export type adminFinishMatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: MatchFinishOut;
+};
+
+export type adminFinishMatchResponse = adminFinishMatchResponses[keyof adminFinishMatchResponses];
+
+export type communitiesReadMyCommunitiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/communities/mine';
+};
+
+export type communitiesReadMyCommunitiesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunitiesMine;
+};
+
+export type communitiesReadMyCommunitiesResponse = communitiesReadMyCommunitiesResponses[keyof communitiesReadMyCommunitiesResponses];
+
+export type communitiesReadTodayCommunityData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/communities/today';
+};
+
+export type communitiesReadTodayCommunityResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunityPublic;
+};
+
+export type communitiesReadTodayCommunityResponse = communitiesReadTodayCommunityResponses[keyof communitiesReadTodayCommunityResponses];
+
+export type communitiesJoinCommunityData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/communities/{id}/join';
+};
+
+export type communitiesJoinCommunityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type communitiesJoinCommunityError = communitiesJoinCommunityErrors[keyof communitiesJoinCommunityErrors];
+
+export type communitiesJoinCommunityResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunityInfo;
+};
+
+export type communitiesJoinCommunityResponse = communitiesJoinCommunityResponses[keyof communitiesJoinCommunityResponses];
+
+export type communitiesLeaveCommunityData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/communities/{id}/leave';
+};
+
+export type communitiesLeaveCommunityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type communitiesLeaveCommunityError = communitiesLeaveCommunityErrors[keyof communitiesLeaveCommunityErrors];
+
+export type communitiesLeaveCommunityResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunityInfo;
+};
+
+export type communitiesLeaveCommunityResponse = communitiesLeaveCommunityResponses[keyof communitiesLeaveCommunityResponses];
+
+export type communitiesReadCommunityMembersData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/communities/{id}/members';
+};
+
+export type communitiesReadCommunityMembersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type communitiesReadCommunityMembersError = communitiesReadCommunityMembersErrors[keyof communitiesReadCommunityMembersErrors];
+
+export type communitiesReadCommunityMembersResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunityMembersPublic;
+};
+
+export type communitiesReadCommunityMembersResponse = communitiesReadCommunityMembersResponses[keyof communitiesReadCommunityMembersResponses];
+
+export type communitiesReadMatchCommunityData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{id}/community';
+};
+
+export type communitiesReadMatchCommunityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type communitiesReadMatchCommunityError = communitiesReadMatchCommunityErrors[keyof communitiesReadMatchCommunityErrors];
+
+export type communitiesReadMatchCommunityResponses = {
+    /**
+     * Successful Response
+     */
+    200: CommunityInfo;
+};
+
+export type communitiesReadMatchCommunityResponse = communitiesReadMatchCommunityResponses[keyof communitiesReadMatchCommunityResponses];
+
+export type battlesStartBattleData = {
+    /**
+     * Body
+     */
+    body?: BattleCreate | null;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/communities/{id}/battles';
+};
+
+export type battlesStartBattleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type battlesStartBattleError = battlesStartBattleErrors[keyof battlesStartBattleErrors];
+
+export type battlesStartBattleResponses = {
+    /**
+     * Successful Response
+     */
+    200: BattleState;
+};
+
+export type battlesStartBattleResponse = battlesStartBattleResponses[keyof battlesStartBattleResponses];
+
+export type battlesReadBattleData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/battles/{id}';
+};
+
+export type battlesReadBattleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type battlesReadBattleError = battlesReadBattleErrors[keyof battlesReadBattleErrors];
+
+export type battlesReadBattleResponses = {
+    /**
+     * Successful Response
+     */
+    200: BattleState;
+};
+
+export type battlesReadBattleResponse = battlesReadBattleResponses[keyof battlesReadBattleResponses];
+
+export type battlesSubmitRecordData = {
+    body: BattleRecordSubmit;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/battles/{id}/records';
+};
+
+export type battlesSubmitRecordErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type battlesSubmitRecordError = battlesSubmitRecordErrors[keyof battlesSubmitRecordErrors];
+
+export type battlesSubmitRecordResponses = {
+    /**
+     * Successful Response
+     */
+    200: BattleState;
+};
+
+export type battlesSubmitRecordResponse = battlesSubmitRecordResponses[keyof battlesSubmitRecordResponses];
+
+export type battlesReadBattleResultData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/battles/{id}/result';
+};
+
+export type battlesReadBattleResultErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type battlesReadBattleResultError = battlesReadBattleResultErrors[keyof battlesReadBattleResultErrors];
+
+export type battlesReadBattleResultResponses = {
+    /**
+     * Successful Response
+     */
+    200: BattleResult;
+};
+
+export type battlesReadBattleResultResponse = battlesReadBattleResultResponses[keyof battlesReadBattleResultResponses];

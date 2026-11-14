@@ -34,6 +34,21 @@ def test_get_access_token_incorrect_password(client: TestClient) -> None:
     assert r.status_code == 400
 
 
+def test_get_access_token_with_login_id(client: TestClient) -> None:
+    body = {"username": "formid01", "password": "cheer1234"}
+    assert (
+        client.post(f"{settings.API_V1_STR}/auth/signup", json=body).status_code == 200
+    )
+    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=body)
+    assert r.status_code == 200
+    assert r.json()["access_token"]
+    r = client.post(
+        f"{settings.API_V1_STR}/login/access-token",
+        data={**body, "password": "wrong1234"},
+    )
+    assert r.status_code == 400
+
+
 def test_use_access_token(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
@@ -86,7 +101,6 @@ def test_reset_password(client: TestClient, db: Session) -> None:
 
     user_create = UserCreate(
         email=email,
-        full_name="Test User",
         password=password,
         is_active=True,
         is_superuser=False,

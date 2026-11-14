@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -126,7 +127,6 @@
 /* ============================================================
    CHEER 101 — brand design system (scoped to .cheer-scope)
    ============================================================ */
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
 .cheer-scope {
   color-scheme: light;
@@ -227,6 +227,28 @@
 .cheer-reveal > *:nth-child(6) { animation-delay: 0.32s; }
 .cheer-reveal > *:nth-child(7) { animation-delay: 0.38s; }
 
+/* ticket (경기 관람 초대장) */
+.cheer-holo {
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 32%,
+    rgba(255, 255, 255, 0.5) 48%,
+    rgba(255, 255, 255, 0) 64%
+  );
+  background-size: 250% 100%;
+  animation: cheer-shimmer 4s linear infinite;
+  mix-blend-mode: soft-light;
+}
+.cheer-barcode {
+  background-image: repeating-linear-gradient(
+    90deg,
+    currentColor 0 1.5px,
+    transparent 1.5px 3px,
+    currentColor 3px 5px,
+    transparent 5px 8px
+  );
+}
+
 /* equalizer bars (decibel) */
 .cheer-eq-bar {
   transform-origin: bottom;
@@ -244,7 +266,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cheer-float, .cheer-pulse, .cheer-eq-bar, .cheer-shine { animation: none; }
+  .cheer-float, .cheer-pulse, .cheer-eq-bar, .cheer-shine, .cheer-holo { animation: none; }
   .cheer-reveal > * { opacity: 1; animation: none; }
 }
 

@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { AxiosError } from "axios"
 import {
   CalendarX2,
   Check,
@@ -6,6 +7,7 @@ import {
   ChevronRight,
   MapPin,
   RotateCw,
+  Ticket,
   X,
 } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -31,6 +33,7 @@ import {
   useMonthMatches,
   useTeams,
 } from "@/cheer/data/schedule"
+import { useCheerMatch, useMyCheers } from "@/cheer/hooks/use-my-cheers"
 import type { MatchDetail } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -54,6 +57,9 @@ function CalendarPage() {
   const [picked, setPicked] = useState<string | null>(today)
   const [teamId, setTeamId] = useState<string | null>(null)
   const [cheerMatch, setCheerMatch] = useState<MatchDetail | null>(null)
+  const navigate = useNavigate()
+  const myCheers = useMyCheers().data
+  const cheer = useCheerMatch()
 
   const matchesQuery = useMonthMatches(month)
   const teamsQuery = useTeams()
@@ -264,6 +270,7 @@ function CalendarPage() {
                   <MatchCard
                     match={match}
                     focusTeamId={teamId}
+                    cheeredTeamId={myCheers?.get(match.id)}
                     onCheer={() => setCheerMatch(match)}
                   />
                 </li>
@@ -277,10 +284,31 @@ function CalendarPage() {
         <CheerDialog
           match={cheerMatch}
           onClose={() => setCheerMatch(null)}
-          onConfirm={(team) => {
-            toast.success(`${team} 응원팀으로 설정했어요`)
-            setCheerMatch(null)
-          }}
+          initialTeamId={myCheers?.get(cheerMatch.id)}
+          pending={cheer.isPending}
+          onConfirm={(team) =>
+            cheer.mutate(
+              { matchId: cheerMatch.id, teamId: team.id },
+              {
+                onSuccess: () => {
+                  toast.success(`${team.name} 응원 신청 완료!`, {
+                    description: "경기 관람 탭에서 입장 초대장을 확인하세요",
+                    action: {
+                      label: "보러가기",
+                      onClick: () => navigate({ to: "/cheer/community" }),
+                    },
+                  })
+                  setCheerMatch(null)
+                },
+                onError: (err) =>
+                  toast.error(
+                    err instanceof AxiosError && err.response?.status === 409
+                      ? "이미 끝난 경기라 응원할 수 없어요"
+                      : "응원 신청에 실패했어요. 다시 시도해 주세요",
+                  ),
+              },
+            )
+          }
         />
       )}
     </div>
@@ -507,10 +535,12 @@ function Legend() {
 function MatchCard({
   match,
   focusTeamId,
+  cheeredTeamId,
   onCheer,
 }: {
   match: MatchDetail
   focusTeamId: string | null
+  cheeredTeamId?: string
   onCheer: () => void
 }) {
   const home = toUiTeam(match.home_team)
@@ -537,6 +567,11 @@ function MatchCard({
           {focusOutcome && (
             <Pill color="#fff" bg={OUTCOME_META[focusOutcome].color}>
               {OUTCOME_META[focusOutcome].label}
+            </Pill>
+          )}
+          {cheeredTeamId && (
+            <Pill color="var(--c-win)" bg="var(--c-win-soft)">
+              <Ticket size={12} /> 신청됨
             </Pill>
           )}
         </div>
@@ -585,9 +620,16 @@ function MatchCard({
         <button
           type="button"
           onClick={onCheer}
-          className="mt-3 w-full rounded-xl bg-[var(--c-primary)] py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-[var(--c-primary-600)]"
+          className={cn(
+            "mt-3 w-full rounded-xl py-2.5 text-sm font-extrabold transition-colors",
+            cheeredTeamId
+              ? "border border-[var(--c-primary)] text-[var(--c-primary)] hover:bg-[var(--c-primary-50)]"
+              : "bg-[var(--c-primary)] text-white hover:bg-[var(--c-primary-600)]",
+          )}
         >
-          이 경기 응원하기
+          {cheeredTeamId
+            ? `${cheeredTeamId === match.home_team_id ? home.name : away.name} 응원 중 · 바꾸기`
+            : "이 경기 응원하기"}
         </button>
       )}
     </div>
@@ -643,12 +685,16 @@ function CheerDialog({
   match,
   onClose,
   onConfirm,
+  initialTeamId,
+  pending,
 }: {
   match: MatchDetail
   onClose: () => void
-  onConfirm: (teamName: string) => void
+  onConfirm: (team: UiTeam) => void
+  initialTeamId?: string
+  pending: boolean
 }) {
-  const [picked, setPicked] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string | null>(initialTeamId ?? null)
   const teams = [toUiTeam(match.away_team), toUiTeam(match.home_team)]
   const pickedTeam = teams.find((t) => t.id === picked)
 
@@ -715,11 +761,11 @@ function CheerDialog({
 
           <button
             type="button"
-            disabled={!pickedTeam}
-            onClick={() => pickedTeam && onConfirm(pickedTeam.name)}
+            disabled={!pickedTeam || pending}
+            onClick={() => pickedTeam && onConfirm(pickedTeam)}
             className="mt-6 w-full rounded-2xl bg-[var(--c-primary)] py-3.5 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)] disabled:opacity-40"
           >
-            응원팀 설정 완료
+            {pending ? "신청 중..." : "응원 신청하기"}
           </button>
         </div>
       </div>

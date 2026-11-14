@@ -151,6 +151,56 @@ export const MATCH_DAYS: Record<string, number> = {
 
 export const TODAY_MATCH = MATCHES[0] // 토트넘 vs 아스널
 
+// ---------- 관람 신청 (초대장) ----------
+// 유저가 "이 경기를 보러 가겠다"고 신청한 내역. 경기 1시간 전부터 입장 초대장이 활성화된다.
+export interface AppliedMatch {
+  id: number // 신청 식별자 = matchId 재사용
+  match: Match
+  cheeredTeam: Team
+}
+
+export const ENTRY_WINDOW_MIN = 60 // 경기 시작 N분 전부터 입장 가능
+const MATCH_DURATION_MIN = 150 // 킥오프 후 이 시간까지는 입장 유지(대략 경기 길이)
+
+// 데모 안정성용 시드. 킥오프를 "현재 시각 기준 상대값"으로 만들어
+// 언제 시연하든 "활성 초대장 / 잠긴 초대장" 상태를 모두 재현한다.
+export function seedAppliedMatches(now: Date = new Date()): AppliedMatch[] {
+  const at = (minFromNow: number) => new Date(now.getTime() + minFromNow * 60_000).toISOString()
+  return [
+    // 40분 뒤 → 1시간 이내 → 입장 가능
+    { id: 9001, cheeredTeam: TEAMS.arsenal, match: { id: 9001, home: TEAMS.tottenham, away: TEAMS.arsenal, league: "프리미어리그", kickoffAt: at(40), status: "SCHEDULED" } },
+    // 4시간 뒤 → 아직 잠김
+    { id: 9002, cheeredTeam: TEAMS.liverpool, match: { id: 9002, home: TEAMS.mancity, away: TEAMS.liverpool, league: "프리미어리그", kickoffAt: at(260), status: "SCHEDULED" } },
+    // 내일 → 잠김
+    { id: 9003, cheeredTeam: TEAMS.barcelona, match: { id: 9003, home: TEAMS.realmadrid, away: TEAMS.barcelona, league: "라리가", kickoffAt: at(1500), status: "SCHEDULED" } },
+  ]
+}
+
+export interface InvitationState {
+  canEnter: boolean // 입장 버튼 활성화 여부 (경기 1시간 전 ~ 경기 종료)
+  started: boolean // 킥오프가 지났는지
+  minutesUntil: number // 킥오프까지 남은 분 (음수면 이미 시작)
+}
+
+export function invitationState(kickoffAt: string, now: Date = new Date()): InvitationState {
+  const diffMs = new Date(kickoffAt).getTime() - now.getTime()
+  const minutesUntil = Math.ceil(diffMs / 60_000)
+  const started = diffMs <= 0
+  const canEnter = minutesUntil <= ENTRY_WINDOW_MIN && diffMs > -MATCH_DURATION_MIN * 60_000
+  return { canEnter, started, minutesUntil }
+}
+
+// 킥오프까지 남은 시간을 사람이 읽는 문구로. (양수 분 기준)
+export function formatCountdown(minutesUntil: number): string {
+  if (minutesUntil <= 0) return "곧 시작"
+  if (minutesUntil < 60) return `${minutesUntil}분 후`
+  const h = Math.floor(minutesUntil / 60)
+  const m = minutesUntil % 60
+  if (h < 24) return m === 0 ? `${h}시간 후` : `${h}시간 ${m}분 후`
+  const days = Math.floor(h / 24)
+  return `${days}일 후`
+}
+
 // 경기 중계 스트림 (데모용 샘플 소스).
 // 실제 중계로 교체하려면 이 URL만 바꾸면 됨. HLS는 지원 브라우저(Safari)에서 네이티브 재생, 그 외는 mp4 프로그레시브.
 export const STREAM = {
@@ -192,6 +242,86 @@ export const MY_RECORDS: CheerRecord[] = [
       kickoffAt: "2026-10-25T04:00:00", status: "FINISHED", homeScore: 3, awayScore: 1,
     },
     cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 5,
+    match: {
+      id: 94, home: TEAMS.arsenal, away: TEAMS.mancity, league: "프리미어리그",
+      kickoffAt: "2026-10-18T20:30:00", status: "FINISHED", homeScore: 2, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 6,
+    match: {
+      id: 95, home: TEAMS.liverpool, away: TEAMS.tottenham, league: "프리미어리그",
+      kickoffAt: "2026-10-12T22:00:00", status: "FINISHED", homeScore: 3, awayScore: 3,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "DRAW", pointsEarned: 50,
+  },
+  {
+    id: 7,
+    match: {
+      id: 96, home: TEAMS.chelsea, away: TEAMS.tottenham, league: "프리미어리그",
+      kickoffAt: "2026-10-05T23:30:00", status: "FINISHED", homeScore: 2, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 8,
+    match: {
+      id: 97, home: TEAMS.arsenal, away: TEAMS.liverpool, league: "프리미어리그",
+      kickoffAt: "2026-09-28T20:30:00", status: "FINISHED", homeScore: 1, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 9,
+    match: {
+      id: 98, home: TEAMS.barcelona, away: TEAMS.realmadrid, league: "라리가",
+      kickoffAt: "2026-09-21T23:00:00", status: "FINISHED", homeScore: 0, awayScore: 2,
+    },
+    cheeredTeamId: TEAMS.barcelona.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 10,
+    match: {
+      id: 99, home: TEAMS.tottenham, away: TEAMS.mancity, league: "프리미어리그",
+      kickoffAt: "2026-09-14T20:30:00", status: "FINISHED", homeScore: 4, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 11,
+    match: {
+      id: 110, home: TEAMS.arsenal, away: TEAMS.chelsea, league: "프리미어리그",
+      kickoffAt: "2026-09-07T22:00:00", status: "FINISHED", homeScore: 2, awayScore: 2,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "DRAW", pointsEarned: 50,
+  },
+  {
+    id: 12,
+    match: {
+      id: 111, home: TEAMS.realmadrid, away: TEAMS.arsenal, league: "친선경기",
+      kickoffAt: "2026-08-30T04:00:00", status: "FINISHED", homeScore: 1, awayScore: 3,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "WIN", pointsEarned: 100,
+  },
+  {
+    id: 13,
+    match: {
+      id: 112, home: TEAMS.liverpool, away: TEAMS.arsenal, league: "프리미어리그",
+      kickoffAt: "2026-08-23T22:00:00", status: "FINISHED", homeScore: 2, awayScore: 1,
+    },
+    cheeredTeamId: TEAMS.arsenal.id, result: "LOSE", pointsEarned: 30,
+  },
+  {
+    id: 14,
+    match: {
+      id: 113, home: TEAMS.tottenham, away: TEAMS.barcelona, league: "친선경기",
+      kickoffAt: "2026-08-16T20:30:00", status: "FINISHED", homeScore: 3, awayScore: 0,
+    },
+    cheeredTeamId: TEAMS.tottenham.id, result: "WIN", pointsEarned: 100,
   },
 ]
 
@@ -314,3 +444,128 @@ export function formatTime(iso: string): string {
 
 export const SEASON_WINRATE = winRate(SEASON_STATS.win, SEASON_STATS.lose) // 0.68
 export const SEASON_LOSERATE = loseRate(SEASON_STATS.win, SEASON_STATS.lose) // 0.32
+
+// ============================================================
+// 공개 프로필 (프로필 URL 공유 → 서로의 프로필 열람)
+// ============================================================
+
+export interface PublicProfile {
+  id: number
+  nickname: string
+  bio: string
+  level: number
+  levelTitle: string
+  totalPoints: number
+  teams: Team[]
+  favoriteTeam: Team
+  style: { label: string; value: number; emoji: string }[]
+  stats: { total: number; win: number; draw: number; lose: number }
+  records: CheerRecord[]
+  badges: Badge[]
+}
+
+// 코드 목록으로 배지 획득 여부를 입힌다 (공통 BADGES 메타 재사용)
+function badgesWith(codes: string[]): Badge[] {
+  return BADGES.map((b) => ({ ...b, acquired: codes.includes(b.code) }))
+}
+
+// 간단한 경기 기록 팩토리 (타 유저 샘플용)
+let _recId = 2000
+function rec(
+  home: Team,
+  away: Team,
+  homeScore: number,
+  awayScore: number,
+  cheered: Team,
+  kickoffAt: string,
+): CheerRecord {
+  const cheeredScore = cheered.id === home.id ? homeScore : awayScore
+  const otherScore = cheered.id === home.id ? awayScore : homeScore
+  const result: MatchResult =
+    cheeredScore > otherScore ? "WIN" : cheeredScore < otherScore ? "LOSE" : "DRAW"
+  const pointsEarned = result === "WIN" ? 100 : result === "DRAW" ? 50 : 30
+  _recId += 1
+  return {
+    id: _recId,
+    match: {
+      id: _recId + 7000,
+      home,
+      away,
+      league: home.league,
+      kickoffAt,
+      status: "FINISHED",
+      homeScore,
+      awayScore,
+    },
+    cheeredTeamId: cheered.id,
+    result,
+    pointsEarned,
+  }
+}
+
+// 본인 프로필 (기존 ME + 시즌 데이터 결합)
+export const ME_PROFILE: PublicProfile = {
+  ...ME,
+  stats: SEASON_STATS,
+  records: MY_RECORDS,
+  badges: BADGES,
+}
+
+// 타 유저 샘플 — 랭킹/대결에 등장하는 페르소나와 id를 맞춘다
+const MINJI_RECORDS: CheerRecord[] = [
+  rec(TEAMS.mancity, TEAMS.liverpool, 3, 1, TEAMS.mancity, "2026-11-13T23:30:00"),
+  rec(TEAMS.realmadrid, TEAMS.barcelona, 2, 0, TEAMS.realmadrid, "2026-11-08T23:00:00"),
+  rec(TEAMS.chelsea, TEAMS.arsenal, 1, 0, TEAMS.chelsea, "2026-11-01T22:00:00"),
+  rec(TEAMS.mancity, TEAMS.chelsea, 4, 2, TEAMS.mancity, "2026-10-25T22:00:00"),
+]
+
+const TOKKI_RECORDS: CheerRecord[] = [
+  rec(TEAMS.tottenham, TEAMS.arsenal, 0, 2, TEAMS.tottenham, "2026-11-13T20:30:00"),
+  rec(TEAMS.liverpool, TEAMS.tottenham, 3, 1, TEAMS.tottenham, "2026-11-06T22:00:00"),
+  rec(TEAMS.tottenham, TEAMS.chelsea, 1, 1, TEAMS.tottenham, "2026-10-30T20:30:00"),
+  rec(TEAMS.barcelona, TEAMS.tottenham, 2, 0, TEAMS.tottenham, "2026-10-23T23:00:00"),
+]
+
+export const PROFILES: Record<number, PublicProfile> = {
+  1: ME_PROFILE,
+  2: {
+    id: 2,
+    nickname: "승리요정민지",
+    bio: "맨시티 직관 가면 거의 이겨요 😎",
+    level: 15,
+    levelTitle: "승리 요정",
+    totalPoints: 5240,
+    teams: [TEAMS.mancity, TEAMS.realmadrid],
+    favoriteTeam: TEAMS.mancity,
+    style: [
+      { label: "열혈팬", value: 88, emoji: "🔥" },
+      { label: "분석왕", value: 95, emoji: "📊" },
+      { label: "데시벨러", value: 72, emoji: "📢" },
+    ],
+    stats: { total: 24, win: 18, draw: 2, lose: 4 },
+    records: MINJI_RECORDS,
+    badges: badgesWith(["VICTORY_FAIRY", "WIN_STREAK_3", "ANALYST", "LOUDEST"]),
+  },
+  3: {
+    id: 3,
+    nickname: "아쉬운토끼",
+    bio: "그래도 토트넘 끝까지 응원해요 🐰",
+    level: 9,
+    levelTitle: "꾸준 응원러",
+    totalPoints: 1980,
+    teams: [TEAMS.tottenham],
+    favoriteTeam: TEAMS.tottenham,
+    style: [
+      { label: "열혈팬", value: 96, emoji: "🔥" },
+      { label: "분석왕", value: 48, emoji: "📊" },
+      { label: "데시벨러", value: 90, emoji: "📢" },
+    ],
+    stats: { total: 20, win: 6, draw: 5, lose: 9 },
+    records: TOKKI_RECORDS,
+    badges: badgesWith(["DEFEAT_FAIRY", "STEADY_FAN", "NIGHT_OWL"]),
+  },
+}
+
+export function getProfile(id: number): PublicProfile | undefined {
+  return PROFILES[id]
+}

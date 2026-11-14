@@ -4,7 +4,7 @@
 
 ## 0. 핵심 아키텍처 결정
 
-- **채팅 외 실시간 미사용.** 데시벨 대결·랭킹 등 채팅을 뺀 전부는 **REST + 폴링(2~3초 간격)** 과 DB 조회로 처리한다. 채팅은 범위에 남기고, 폴링으로 부족하면 그때만 WebSocket을 붙인다(별도 소켓 서버 없이 같은 FastAPI 앱 안에서).
+- **채팅·커뮤니티 공간 외 실시간 미사용.** 데시벨 대결·랭킹 등 나머지는 **REST + 폴링(2~3초 간격)** 과 DB 조회로 처리한다. 채팅과 커뮤니티 공간(메타버스: 접속자 위치·이모트)만 WebSocket이고, 별도 소켓 서버 없이 같은 FastAPI 앱 안에 둔다. 공간 상태와 워커 간 전달은 Redis.
 - **데시벨 대결 = 핫시트/동시참여 혼합.** 측정은 전적으로 **클라이언트(Web Audio API)** 에서 수행하고, 서버는 점수(peak dB)만 받아 저장·집계한다. 서버는 음성을 다루지 않는다.
 - **경기 일정 데이터는 시드(seed) 테이블로 적재.** 외부 API 연동(football-data.org 등)은 시간 남으면 스트레치. 데모 안정성 위해 샘플 경기 데이터를 DB에 미리 넣는다.
 - 인증은 해커톤 범위에서 **소셜 로그인 스텁 or 단순 토큰**으로 최소화. (아래 명세는 `userId`를 인증 컨텍스트에서 획득한다고 가정)
@@ -57,10 +57,10 @@ UserSetting {
 ```
 Team {
   id        PK
-  name      string   // "아스널"
-  fullName  string   // "아스널 FC"
+  name      string   // "LG"
+  fullName  string   // "LG 트윈스"
   logoUrl   string
-  league    string   // "프리미어리그"
+  league    string   // "KBO리그"
 }
 ```
 
@@ -186,7 +186,7 @@ Fortune {
   teamId      FK
   date        date              // 경기 당일
   fortuneText string            // "흐름이 좋은 날이에요! ..."
-  cheerTip    string            // "후반 교체 타이밍을 주목하세요"
+  cheerTip    string            // "7회 이후 불펜 운용을 주목하세요"
   luckScore   int               // 0~100
   UNIQUE(matchId, teamId, date)
 }
@@ -242,7 +242,9 @@ Fortune {
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| POST | /auth/login | 소셜 로그인(스텁). `{provider, token}` → `{accessToken, user}` |
+| GET | /auth/check-username?username= | 아이디 중복 체크. `{username, available}` |
+| POST | /auth/signup | 아이디·비밀번호 가입. `{username, password}` → `{accessToken, user}` (중복이면 409) |
+| POST | /auth/login | 아이디·비밀번호 로그인. `{username, password}` → `{accessToken, user}` |
 | GET | /me | 내 프로필 + 통계 요약 (요정 타입, 승률, 레벨, 포인트, 응원팀) |
 | PATCH | /me/profile | `{nickname?, bio?, profileImageUrl?}` |
 | GET | /me/settings | 설정 조회 |
@@ -250,6 +252,15 @@ Fortune {
 | GET | /me/teams | 응원하는 팀 목록 |
 | POST | /me/teams | `{teamId}` 추가 |
 | DELETE | /me/teams/{teamId} | 응원팀 제거 |
+
+**구현 메모 (BE-1)**
+
+- 로그인은 아이디·비밀번호뿐이다(소셜·이메일 없음). 아이디는 영문·숫자·밑줄 4~20자이고 대소문자를 구분하지 않는다(소문자로 저장). 비밀번호는 4자 이상. 응답은 `{access_token, token_type, user}`이고 이후 요청은 `Authorization: Bearer`로 보낸다.
+- 로그인 아이디는 별도 칼럼 없이 `email` 칼럼에 합성해 저장한다(`{username}@users.cheer101.example.com`, 메일은 보내지 않는다). 아이디 중복 체크는 이 칼럼의 unique로 한다. 그래서 `/me`·로그인 응답의 `user`에는 `email`·`username`이 없다. `User`의 이름 필드는 `nickname` 하나뿐이고 템플릿의 `full_name`은 제거했다. 관리자 계정은 템플릿의 `/login/access-token`(이메일)으로 로그인한다.
+- 로그인 실패는 아이디가 없든 비밀번호가 틀리든 같은 400 응답이다.
+- `POST /me/teams`, `DELETE /me/teams/{teamId}`는 갱신된 응원팀 목록 `{data, count}`를 돌려준다. 이미 있는 팀 추가는 그대로 두고, 없는 팀 삭제는 404다.
+- `GET /me`와 `GET /me/stats`의 통계는 확정된 응원 기록(PENDING 제외)으로 센다. `total`은 승+무+패다.
+- `nickname`이 비어 있으면 이름, 그것도 없으면 이메일 앞부분으로 채워 응답한다.
 
 **GET /me 응답 예시**
 
@@ -263,7 +274,7 @@ Fortune {
   "totalPoints": 3820,
   "stats": { "total": 42, "win": 28, "draw": 3, "lose": 13,
              "winRate": 0.68, "loseRate": 0.32 },
-  "teams": [{ "id": 3, "name": "아스널" }, { "id": 4, "name": "토트넘" }]
+  "teams": [{ "id": 3, "name": "LG" }, { "id": 4, "name": "두산" }]
 }
 ```
 
@@ -287,6 +298,13 @@ Fortune {
 | GET | /me/points?page= | 포인트 내역 |
 | GET | /me/share-card | SNS 공유 카드 데이터 (승률, 경기수, 요정, 최애팀) |
 
+**구현 메모 (BE-1)**
+
+- `POST /matches/{id}/cheer`: `cheeredTeamId`는 그 경기의 홈팀 또는 원정팀이어야 한다(아니면 400). 종료(FINISHED)된 경기는 409다. 이미 정산으로 확정된 기록도 수정할 수 없다(409). 같은 경기에 다시 보내면 새 기록이 아니라 응원팀만 바뀐다.
+- `GET /me/records?page=&size=`: 1부터 시작하는 `page`, 기본 `size` 20(최대 100). 최근 경기 순이고 각 항목에 `match`(팀 정보 포함)가 들어 있다. 응답은 `{data, count, page, size}`이고 `count`는 전체 기록 수다.
+
+- `GET /me/share-card`: 닉네임·프로필 이미지, 요정(`fairy_type`·`fairy_label`), `stats`(`total`이 경기수, `/me`와 같은 규칙), `favorite_team`을 돌려준다(로그인 필요). **최애팀**은 응원 기록(진행 전 포함)에서 가장 많이 응원한 팀이고, 같은 횟수면 가장 최근에 응원한 팀이다. 응원 기록이 없으면 응원팀 설정(`/me/teams`)의 첫 팀, 그것도 없으면 `null`이다. 카드 이미지는 프론트가 그린다.
+
 **경기 종료 처리 (내부 배치/관리자 트리거)**
 
 - `PATCH /admin/matches/{id}/finish` `{homeScore, awayScore}` 호출 시:
@@ -295,16 +313,66 @@ Fortune {
   3. 결과별 포인트 지급 + PointTransaction 기록
   4. 유저별 승률/요정/배지 재평가
 - 데모에서는 이 엔드포인트로 "경기 끝남"을 수동 발동해 결과 화면을 시연.
+- 구현 메모 (BE-1): superuser 전용이고 한 트랜잭션으로 처리한다(중간에 실패하면 전부 되돌린다). 이미 종료된 경기는 409이며, 시작 전(SCHEDULED) 경기도 바로 종료할 수 있다. 응답은 `{match, settled, win, draw, lose}`다.
+- 포인트는 `services/settlement.py`의 `grant_points` 한 곳에서만 지급한다(대결 TOP3도 호출). 같은 (유저, 사유, 대상)에는 한 번만 지급되고(DB unique), 레벨은 지급할 때 `total_points // 300 + 1`로 다시 계산한다.
+- 배지는 한 번 얻으면 회수하지 않는다(요정 칭호는 조회 때마다 계산하므로 바뀔 수 있다). 3연승은 확정된 최근 3경기가 모두 승리일 때이며 무승부는 연승을 끊는다. 10경기는 확정된 기록 기준이다. 데시벨 마스터는 대결 종료 후 `evaluate_badges(..., peak_db=)`로 평가한다.
 
 ### 4.4 커뮤니티
 
 | Method | Path | 설명 |
 | --- | --- | --- |
+| GET | /communities/mine | 내가 응원 신청한 경기(종료 전)를 KST 날짜별로 묶은 목록 + 경기별 입장 가능 여부 (커뮤니티 홈) |
 | GET | /communities/today | 오늘의 커뮤니티 (대표 경기 1개 + 메타) |
 | GET | /matches/{id}/community | 경기별 커뮤니티 정보 (멤버 수, 내 입장 여부) |
-| POST | /communities/{id}/join | 입장 (초대장 → 입장) |
+| POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
+| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음). 워커 사이 전달은 Postgres LISTEN/NOTIFY |
+| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스). 20×12 칸 위 접속자 위치·이모트. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간" |
+
+**입장 규칙**
+
+- 응원 신청(§4.3 `POST /matches/{id}/cheer`)한 경기의 커뮤니티에만 입장할 수 있다.
+- 입장은 **경기 시작(`kickoffAt`) 1시간 전부터 경기 종료(`FINISHED`)까지** 가능하다. 경기 상태는 자동으로 LIVE가 되지 않으므로(스케줄러 없음) 상태가 아니라 **시간**으로 판단한다: `now >= kickoffAt - 1시간 && status != FINISHED`.
+- 이 판단은 서버가 하고 응답에 담는다(`enterOpensAt`, `canEnter`). 브라우저 시계에 의존하지 않고, 프론트는 `serverNow`로 카운트다운만 그린다. 버튼 비활성화만으로는 API 직접 호출을 막을 수 없으므로 `join`도 같은 규칙으로 서버에서 거절한다.
+- `join` 거절: 입장 시간 전 → 403 `NOT_OPEN_YET`(`enterOpensAt` 포함), 응원 신청을 하지 않은 경기 → 403 `NOT_CHEERED`, 종료된 경기 → 409 `MATCH_FINISHED`. 이미 멤버면 그대로 성공한다(멱등).
+- 커뮤니티는 경기당 1개이며, 필요할 때 처음 만든다(동시 요청이어도 중복 생성되지 않는다).
+- `UserSetting.autoJoinCommunity`(경기 당일 자동 입장)는 이번 범위에서 연결하지 않는다.
+
+**GET /communities/mine 응답 예시** (로그인 필요)
+
+```json
+{
+  "serverNow": "2026-11-14T15:30:00+09:00",
+  "count": 3,
+  "days": [
+    { "date": "2026-11-14",
+      "items": [
+        { "match": { "id": "...", "homeTeam": {...}, "awayTeam": {...}, "kickoffAt": "...", "status": "SCHEDULED" },
+          "cheeredTeamId": "...",
+          "community": { "id": "...", "memberCount": 3, "joined": false },
+          "enterOpensAt": "2026-11-14T17:00:00+09:00",
+          "canEnter": false } ] },
+    { "date": "2026-11-19", "items": [ ... ] }
+  ]
+}
+```
+
+- 응원 신청한 경기 중 **종료되지 않은 것만** 담는다(종료된 경기는 `/me/records`). `days`는 날짜 오름차순이고 같은 날 안에서는 킥오프 순이다. 날짜는 KST 기준으로 묶는다(`/matches?month=`와 같다).
+- 신청 내역이 없으면 `days: []`, `count: 0`(200)이다. 프론트는 이때 "신청한 경기가 없어요"를 보여주고 캘린더로 보낸다.
+- 프론트는 날짜별 목록을 보여주고, 입장 초대장을 하나씩 보여주며, `canEnter=false`인 초대장은 입장 버튼을 비활성화한다.
+- (JSON 필드는 구현에서 snake_case다: `server_now`, `enter_opens_at`, `can_enter` 등)
+
+**구현 메모 (§4.4)**
+
+- 시각은 UTC(타임존 포함 ISO)로 내려간다. 위 예시의 `+09:00`은 표기용이고, 날짜별 묶음(`days[].date`)만 KST 기준이다.
+- `GET /matches/{id}/community`와 `POST /communities/{id}/join`, `POST /communities/{id}/leave`는 갱신된 커뮤니티 정보 `{id, match_id, member_count, joined, enter_opens_at, can_enter}`를 돌려준다. 커뮤니티는 이 API를 처음 부를 때 만들어진다.
+- `join` 거절은 `detail`이 객체다: `{"code": "NOT_CHEERED"}`(403), `{"code": "NOT_OPEN_YET", "enter_opens_at": ...}`(403), `{"code": "MATCH_FINISHED"}`(409). 검사 순서는 응원 신청 → 종료 → 입장 시간이다. 존재하지 않는 커뮤니티는 404.
+- `leave`는 멤버가 아니어도 성공한다. 나가도 응원 기록은 그대로이고 입장 시간 안이면 다시 들어올 수 있다.
+- `GET /communities/{id}/members`는 로그인한 누구나 볼 수 있고 `{data, count}`를 입장 순으로 돌려준다. 항목은 `user_id`, `nickname`, `profile_image_url`, `level`, `fairy_type`, `fairy_label`, `joined_at`이다(요정은 §3.2 규칙).
+- 대결(§4.6)을 시작하거나 측정값을 보낼 때 커뮤니티 멤버인지는 검사하지 않는다.
+||||||| parent of ff6f64f (feat(space): Redis 기반 커뮤니티 공간(메타버스) WebSocket 추가)
+| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
 
 ### 4.5 랭킹 (폴링)
 
@@ -345,6 +413,7 @@ Fortune {
 - `endsAt` 지난 뒤 첫 `GET /battles/{id}` or `/result` 호출 시 서버가 status=FINISHED 전환(지연 정산). 별도 스케줄러 불필요.
 - 종료 시 peakDb 상위 3명에게 포인트(100/50/30) 지급 + PointTransaction 기록.
 - `maxPlayers`(5) 초과 입장 불가.
+- 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants}`, 종료 전이면 409. `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
 
 ### 4.7 운세 (AI)
 
@@ -357,8 +426,8 @@ Fortune {
 ```json
 {
   "matchId": 100, "teamId": 3,
-  "fortuneText": "흐름이 좋은 날이에요! 전반에 기선제압하면 승리 확률이 높아요",
-  "cheerTip": "후반 교체 타이밍을 주목하세요",
+  "fortuneText": "흐름이 좋은 날이에요! 초반에 선취점을 뽑으면 승리 확률이 높아요",
+  "cheerTip": "7회 이후 불펜 운용을 주목하세요",
   "luckScore": 78
 }
 ```
@@ -373,6 +442,7 @@ Fortune {
 | 캘린더 | GET /matches?month |
 | 팀 응원 설정 | GET /matches/{id}, POST /matches/{id}/cheer |
 | 초대장 → 커뮤니티 입장 | GET /matches/{id}/community, POST /communities/{id}/join |
+| 커뮤니티 홈 (내 경기 목록·초대장) | GET /communities/mine |
 | 커뮤니티 홈 (랭킹) | GET /communities/today, /rankings/victory, /rankings/defeat |
 | 데시벨 측정/대결방 | POST /communities/{id}/battles, GET /battles/{id} (폴링), POST /battles/{id}/records |
 | 대결 종료/보상 | GET /battles/{id}/result |
@@ -397,8 +467,8 @@ Fortune {
 
 ## 7. 데모 시나리오 (심사용 3분)
 
-1. 캘린더에서 오늘 경기(토트넘 vs 아스널) 선택 → 아스널 응원 설정
-2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정
+1. 캘린더에서 오늘 경기(두산 vs LG) 선택 → LG 응원 설정
+2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정 (입장은 경기 시작 1시간 전부터라, 시연 경기는 킥오프가 1시간 이내여야 한다)
 3. TOP3 + 포인트 지급 화면
 4. `admin/finish`로 경기 종료 발동 → 승리 결과·포인트·요정 갱신
 5. 마이페이지에서 승률·요정·배지 확인 → SNS 공유 카드로 마무리
