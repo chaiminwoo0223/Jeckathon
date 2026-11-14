@@ -44,20 +44,23 @@
 
 ## 커뮤니티 공간·채팅 (메타버스, 프론트 연동)
 
-백엔드: `backend/app/api/routes/space.py`, `backend/app/services/space.py`(BE-2). 커뮤니티(경기 방)마다 소켓 하나로 누가 어디 서 있는지·이모트·채팅을 다룬다. 예전 `WS /chat/rooms/{roomId}/ws`(고정 방 1·2)는 없앴다. 프론트 `live-chat.tsx`도 이 소켓의 `chat`을 쓴다.
+백엔드: `backend/app/api/routes/space.py`, `backend/app/services/space.py`(BE-2). 커뮤니티(경기 방)마다 소켓 하나로 누가 어디 서 있는지·말풍선·이모트·채팅을 다룬다. 예전 `WS /chat/rooms/{roomId}/ws`(고정 방 1·2)는 없앴다. 프론트 응원 스타디움(`frontend/src/cheer/arena/`, `fe/arena-metaverse`)의 `PresenceApi`(`players`·`me`·`move`)를 그대로 채우게 맞췄고(2단계 `createSocketPresence`), `live-chat.tsx`도 이 소켓의 `chat`을 쓴다.
 
-- 주소: `WS /api/v1/communities/{community_id}/space/ws?token=<access_token>`. `community_id`는 `GET /communities/today`의 `id`(UUID). 토큰은 `POST /api/v1/login/access-token`(또는 `/auth/login`)의 `access_token`을 쿼리로 넘긴다(브라우저 WebSocket은 헤더를 못 붙인다). 호스트는 `VITE_API_URL`의 `http`를 `ws`로 바꿔 쓴다(HTTPS면 `wss`).
+- 주소: `WS /api/v1/space/{community_id}/ws?token=<access_token>`. `community_id`는 커뮤니티 id(UUID). 토큰은 `POST /api/v1/login/access-token`(또는 `/auth/login`)의 `access_token`을 쿼리로 넘긴다(브라우저 WebSocket은 헤더를 못 붙인다). 호스트는 `VITE_API_URL`의 `http`를 `ws`로 바꿔 쓴다(HTTPS면 `wss`).
 - 거부: 토큰이 틀리거나, 그 커뮤니티에 입장(`POST /communities/{id}/join`)하지 않았으면 연결 전에 끊긴다(close code 1008). 이때는 재연결하지 않는다. 먼저 join이 성공해야 공간에 붙는다.
-- 좌표: 칸(grid). 원점 왼쪽 위, `x` 0..19, `y` 0..11 정수(크기는 snapshot `room.w`·`room.h`). 화면은 칸을 컨테이너 크기에 맞춰 늘리고, 칸 이동은 CSS `transition`으로 부드럽게 한다.
+- 좌표: 경기장 중심(0,0) 기준 `x`·`z`(실수), 반경 `room.radius`(16.5 = 프론트 `ARENA_PLAY_RADIUS`) 원 안. `r`은 바라보는 방향(rad) = `Player.rotation`. 원 밖 값은 서버가 가장자리로 자른다.
 - 받기(server→client), JSON `type`으로 가른다:
-  - `snapshot` (연결 직후 한 번): `{"type":"snapshot","v":1,"me":"<내 user_id>","room":{"id":"<community_id>","w":20,"h":12},"users":[{"user_id","name","avatar_url","x","y"}],"chat":[…chat 메시지, 오래된 것부터 최근 50개…]}`. 받으면 사람 목록과 채팅 목록을 통째로 바꾼다.
+  - `snapshot` (연결 직후 한 번): `{"type":"snapshot","v":2,"me":"<내 user_id>","room":{"id":"<community_id>","radius":16.5},"users":[{"user_id","nickname","team":{"name","color"}|null,"x","z","r"}],"chat":[…chat 메시지, 오래된 것부터 최근 50개…]}`. 받으면 사람 목록과 채팅 목록을 통째로 바꾼다. `team`은 이 경기에서 고른 응원팀(유니폼), 고르지 않았으면 `null`.
   - `join`: `{"type":"join","user":{…users 한 칸…}}`. 이미 있는 사람이면 덮어쓴다(같은 사람이 탭을 더 연 경우).
   - `leave`: `{"type":"leave","user_id"}`. 그 사람의 마지막 탭이 닫혀야 온다.
-  - `moves`: `{"type":"moves","p":{"<user_id>":[x,y],…}}`. 서버가 0.1초마다 그 사이 움직인 사람의 마지막 위치만 모아 보낸다(연결당 최대 10프레임/s, 이동이 화면에 뜨기까지 평균 약 50ms). 내 이동도 여기 들어온다(범위 밖 값은 잘려서). 목록에 없는 `user_id`는 무시한다(`leave` 직후 늦게 온 위치).
-  - `emote`: `{"type":"emote","user_id","emote"}`. 말풍선·애니메이션으로 잠깐 보여 준다(저장 안 함).
+  - `moves`: `{"type":"moves","p":{"<user_id>":[x,z,r],…}}`. 서버가 0.1초마다 그 사이 움직인 사람의 마지막 위치만 모아 보낸다(연결당 최대 10프레임/s). 내 위치도 들어오지만 내 아바타는 로컬 값으로 그리고, 다른 사람은 이 값 사이를 보간한다. 목록에 없는 `user_id`는 무시한다.
+  - `say`: `{"type":"say","user_id","text"}`. `Player.message` 머리 위 말풍선(저장 안 함, 프론트가 몇 초 뒤 지운다).
+  - `emote`: `{"type":"emote","user_id","emote"}`. 잠깐 보여 준다(저장 안 함).
   - `chat`: `{"type":"chat","user_id","name","text","sent_at"}`. `name`은 닉네임(`User.display_nickname`). 내가 보낸 것도 이걸로 돌아오므로 화면에 직접 추가하지 않는다(중복된다). 같은 방의 모든 사람이 같은 순서로 받는다(워커 4개·4명 동시 전송으로 확인). 순서는 도착 순서이고 `sent_at`은 표시용이라 워커가 다르면 앞뒤가 아주 조금 뒤바뀔 수 있다.
   - `pong`, `error`(`{"type":"error","code":"bad_message"}`).
-- 보내기(client→server): `{"type":"move","x":7,"y":4}`(탭할 때만, 초당 10개 넘는 건 서버가 버린다), `{"type":"emote","emote":"clap"}`(`clap`·`cheer`·`wave`·`fire`, 1초에 1번), `{"type":"chat","text":"…"}`(서버가 앞뒤 공백을 지우고 500자로 자르며 빈 글은 버린다), `{"type":"ping"}`(25초마다. 60초 동안 아무것도 안 보내면 다른 사람 화면에서 사라진다).
+- 보내기(client→server):
+  - `{"type":"move","x":1.2,"z":-3.4,"r":3.14}`: `PresenceApi.move` 그대로. 매 프레임 보내도 서버가 0.1초마다 마지막 값만 쓴다(멈춘 자리도 반영된다). 트래픽을 줄이려면 10Hz로 줄여 보낸다.
+  - `{"type":"chat","text":"…"}`(서버가 앞뒤 공백을 지우고 500자로 자르며 빈 글은 버린다), `{"type":"say","text":"가자!"}`(60자, 1초에 1번), `{"type":"emote","emote":"clap"}`(`clap`·`cheer`·`wave`·`fire`, 1초에 1번), `{"type":"ping"}`(25초마다. 60초 동안 아무것도 안 보내면 다른 사람 화면에서 사라진다).
 - 재연결: 끊기면 1·2·4…최대 10초 간격으로 다시 붙고, 새 snapshot으로 통째로 바꾼다. `StrictMode` 개발 모드의 이중 연결은 서버가 탭 수로 세서 문제없다(effect cleanup에서 `ws.close()`).
 - `frontend/src/client/`(생성 클라이언트)에는 WS가 안 들어가므로 메시지 타입은 프론트가 직접 쓴다. 로컬에서 vite proxy로 붙이면 `/api` 항목에 `ws: true`가 있어야 한다.
 - 상태는 Redis에만 있다(재시작하면 비어도 된다). 로컬은 `docker compose up -d redis`, 설정은 `REDIS_URL`(기본 `redis://localhost:6379/0`). Redis가 없어도 서버는 뜨고 이 WS만 실패한다.
@@ -84,6 +87,7 @@
 - 운영 비밀값(SECRET_KEY, DB·superuser 비밀번호, AI_API_KEY)은 서버 파일에만 있다. 바꿀 일이 있으면 배포 담당(SonAIengine)에게.
 - `deploy/`, `.github/`는 배포 담당 영역이다.
 - 커뮤니티 공간·채팅 WS는 Redis로 워커(`--workers 4`) 사이를 잇는다. 운영 `deploy/home/compose.yml`에 `redis` 서비스(`redis:8-alpine`)와 backend 환경변수 `REDIS_URL: redis://redis:6379/0`이 있다. Redis가 없으면 서버는 뜨지만 이 WS가 모두 실패한다. 워커 수를 1로 줄일 필요는 없다.
+- 공간·채팅 WS는 API와 다른 프로세스로 돈다: 운영 `deploy/home/compose.yml`의 `space` 서비스(같은 이미지, `fastapi run app/realtime_main.py --app space_app --workers 2`, `caddy_default` 별칭 `jeckathon-space`). **남은 일(배포 담당, 홈서버 Caddyfile)**: `handle /api/v1/space/* { reverse_proxy jeckathon-space:8000 }`를 backend 규칙보다 앞에 둔다. 그 전까지는 backend가 같은 경로를 계속 서빙하므로 `space`가 떠 있기만 해도 깨지지 않는다. `deploy.sh`는 backend 헬스만 기다리므로 `space` 상태는 `docker compose ps`로 본다.
 
 ## Git
 

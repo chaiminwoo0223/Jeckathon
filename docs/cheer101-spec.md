@@ -18,7 +18,7 @@
 | 커뮤니티(Community) | 경기 1개당 1개 생성되는 응원방 |
 | 데시벨 대결(Battle) | 커뮤니티 안에서 열리는 타임어택 응원 게임 (최대 5명) |
 | 포인트(Point) | 경기 결과·데시벨 TOP3로 적립되는 재화 |
-| 운세(Fortune) | 경기 당일 응원팀 기준 AI 생성 운세 |
+| 운세(Fortune) | 경기 당일 응원팀 기준 운세. 그날 두 팀 선수들의 생년월일로 6단계 등급(대길·중길·소길·소흉·중흉·대흉)과 선수 몇 명을 뽑는다. 문구는 시드 풀, AI 생성은 후속 |
 
 ## 2. 데이터 모델
 
@@ -177,7 +177,7 @@ PointTransaction {
 }
 ```
 
-### 2.11 Fortune (운세, AI 생성 캐시)
+### 2.11 Fortune (운세, AI 생성 캐시 — AI 연동 때 사용, 지금은 비어 있음)
 
 ```
 Fortune {
@@ -191,6 +191,22 @@ Fortune {
   UNIQUE(matchId, teamId, date)
 }
 ```
+
+### 2.12 Player (선수, 운세 입력용 — KBO 공개 명단 스냅샷)
+
+```
+Player {
+  id         PK
+  kboId      int UNIQUE         // KBO 선수 번호. 시드 upsert 키
+  teamId     FK
+  name       string
+  position   string             // 투수/포수/내야수/외야수 (빈 값 허용)
+  backNumber string?            // 등번호. 3자리(육성)·null은 운세 후보에서 제외
+  birthDate  date               // 운세의 핵심 입력. 응답에는 birthYear만 내린다
+}
+```
+
+- 출처 `backend/app/seed/kbo_people_2026.json`(koreabaseball.com, 수집일 2026-11-14, 팀당 ~100명 선수만 적재). 1군 엔트리·라인업 데이터는 없다.
 
 ## 3. 비즈니스 규칙 (계산 로직)
 
@@ -332,7 +348,7 @@ Fortune {
 | POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
-| WS | /communities/{id}/space/ws?token={JWT} | 커뮤니티 공간(메타버스)과 실시간 채팅을 한 소켓으로. 20×12 칸 위 접속자 위치·이모트·채팅(방마다 최근 50개). 입장한 멤버만. 상태는 Redis(DB 저장 없음). 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
+| WS | /space/{communityId}/ws?token={JWT} | 커뮤니티 공간(메타버스, 3D 응원 스타디움)과 실시간 채팅을 한 소켓으로. 입장한 멤버만. 원형 경기장(반경 16.5) 위 접속자 위치·방향, 응원팀 유니폼, 말풍선·이모트, 채팅(최근 50개 Redis). DB 저장 없음. API와 다른 프로세스로 띄울 수 있다. 메시지 형식은 팀 CLAUDE.md "커뮤니티 공간·채팅" |
 
 **입장 규칙**
 
@@ -418,11 +434,11 @@ Fortune {
 - 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants, my_points}`, 종료 전이면 409. `top3[]` 각 항목에는 실제로 받은 포인트 `points`가 들어 있고(PointTransaction에서 읽는다), `my_points`는 내가 받은 포인트다(TOP3 밖이면 0). `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
 - 구현 메모 (정산): `endsAt`이 지난 뒤 처음 오는 `GET /battles/{id}`, `/result`, `POST /battles/{id}/records` 중 하나가 정산한다. 대결 행을 잠그고(`FOR UPDATE`) 다시 읽어 ONGOING을 본 요청 하나만 정산하므로 동시에 폴링해도 두 번 지급되지 않는다. peakDb 상위 3명에게 100/50/30을 `services/settlement.py`의 `grant_points(reason=DECIBEL_TOP3, related_id=battleId)`로 지급하고(3명 미만이면 있는 사람만), 참가자 전원을 `evaluate_badges(peak_db=)`로 데시벨 마스터 평가한다. 상태 전환·지급·배지는 한 트랜잭션이다. 기록 제출은 같은 행을 공유 잠금(`FOR SHARE`)으로 다시 읽고 `endsAt` 전인지 확인하므로, 정산과 겹치면 정산 쪽이 그 제출의 커밋을 기다려 순위에 반영하거나 제출이 409가 된다(정산 뒤에 기록이 끼어들지 않는다).
 
-### 4.7 운세 (AI)
+### 4.7 운세 (시드 → AI)
 
 | Method | Path | 설명 |
 | --- | --- | --- |
-| GET | /matches/{id}/fortune?teamId= | 경기 당일 운세. 캐시 없으면 AI 생성 후 저장·반환 |
+| GET | /matches/{id}/fortune?team_id= | 경기 당일 응원팀 운세. 두 팀 선수의 생년월일로 계산한 등급·선수 하이라이트를 시드 문구 풀에서 즉시 반환 |
 
 **응답 예시**
 
@@ -431,11 +447,40 @@ Fortune {
   "matchId": 100, "teamId": 3,
   "fortuneText": "흐름이 좋은 날이에요! 초반에 선취점을 뽑으면 승리 확률이 높아요",
   "cheerTip": "7회 이후 불펜 운용을 주목하세요",
-  "luckScore": 78
+  "luckScore": 78,
+  "grade": "중길",
+  "luckyPlayers": [
+    {"kboId": 55208, "name": "홍길동", "position": "포수", "backNumber": "27",
+     "birthYear": 1998, "grade": "대길", "luckScore": 94, "oneLiner": "홍길동 선수, 오늘은 배트에 눈이 달렸어요"}
+  ],
+  "cautionPlayer": {"kboId": 60112, "name": "김철수", "position": "투수", "backNumber": "41",
+     "birthYear": 2001, "grade": "대흉", "luckScore": 3, "oneLiner": "김철수 선수, 오늘은 공이 좀 안 보이는 날"}
 }
 ```
 
-- **AI 담당**: 프롬프트 = 팀명 + 상대팀 + 최근 폼(옵션). 톤은 "쓸모없지만 그럴듯한" 운세. 결과를 `Fortune` 테이블에 (matchId, teamId, date) 유니크로 캐싱해 중복 호출 방지.
+(JSON 키는 실제로는 snake_case — `lucky_players`, `caution_player`, `birth_year` 등. 위는 명세 표기 관례.)
+
+**계산 규칙** (정본. 코드는 `app/ai/fortune_players.py`)
+
+- 후보 선수 = 응원팀 `Player` 중 등번호가 0~99인 사람(팀당 60~72명). 등번호 3자리(육성)·없음은 제외한다. 1군·라인업 구분 데이터가 없어서 팬이 모를 2군 이름을 줄이는 근사치다.
+- 선수 점수 = `sha256("생년월일:경기일(KST)") % 100`. 같은 날 같은 생일이면 같은 점수, 정렬 동점은 `kboId` 오름차순.
+- 등급(선수·팀 공통): 88↑ 대길 · 68↑ 중길 · 43↑ 소길 · 23↑ 소흉 · 8↑ 중흉 · 그 아래 대흉 (길 57% / 흉 43%).
+- 팀 점수 = 후보 평균을 정규분포 누적확률로 변환한 퍼센타일 `round(100 × Φ((평균−49.5) / (28.87/√n)))`. 단순 평균은 ~50에 몰리고 상위 N명 평균은 항상 대길이라 이렇게 한다. `luck_score`가 이 값이다.
+- `lucky_players` = 점수 상위 3명(기운 좋은 선수), `caution_player` = 최하위 1명(그 등급이 흉 계열일 때만, 아니면 null). 팀 등급과 선수 등급은 독립이다.
+- 후보가 4명 미만이면 기존 팀 시드(`fortune_seed.json`)로 폴백하고 `lucky_players=[]`, `caution_player=null`.
+- 문구는 `app/ai/fortune_grades.json`의 등급 풀에서 `sha256(날짜:팀id:등급)`으로 고른다. 같은 날 같은 팀은 항상 같은 결과, 두 팀이 같은 등급이면 문구가 다르다. 네트워크·DB 저장 없음.
+- 가짜 라인업은 만들지 않는다. 후보가 실제 출전한다는 보장이 없으므로 문구는 "오늘 기운 좋은 선수"로 쓴다.
+
+**화면·톤 방침 (FE·문구 작성 기준)**
+
+- 위계: 팀 등급(큰 글씨) → 기운 좋은 선수 3명 + 조심할 선수 1명. 전체 명단은 보여주지 않는다. 두 팀을 나란히 보여 대비를 만들고 내 응원팀을 위에 둔다.
+- 생년월일은 `birth_year`만 내린다("98년생"). 코치·감독은 쓰지 않는다.
+- 화면 구석에 "재미로 보는 운세"를 표기한다.
+- 흉 문구는 가볍게(선수를 깎아내리지 않는다. 부상·사생활·승부 단정 금지). 팀 흉 문구·팁의 끝은 "응원으로 뒤집자"로 맺어 데시벨 대결로 잇는다.
+- 선수별 생일 보너스는 후속(여유 시).
+- 세부 계획·결정 근거: `docs/fortune-players-plan.md`.
+
+- **후속(AI)**: 프롬프트 = 팀명 + 상대팀 + 최근 폼(옵션). 조회 순서는 `Fortune` 캐시(matchId, teamId, date 유니크) → AI → 시드 풀. AI 결과만 `Fortune`에 저장하고, 실패하면 시드로 내려간다. 호출 코드는 `app/ai/fortune.py`에 보관돼 있다. 등급·선수 하이라이트는 코드가 계산하고 AI는 문구만 바꾸는 구조로 간다.
 - (양념) 응원 기록 기반 AI 한 줄 평도 같은 패턴으로 추가 가능.
 
 ## 5. 화면 ↔ API 매핑 (목업 기준)
@@ -460,7 +505,7 @@ Fortune {
 - BE-1: User/Team/Match/CheerRecord + 인증 스텁 + 경기 일정/캘린더 API + 시드 데이터 + 경기 종료 정산(포인트·요정·배지)
 - BE-2: Community/Battle/BattleRecord + 데시벨 대결 폴링 API + 랭킹 API + 포인트/배지 조회
 - FE: 캘린더 → 응원설정 → 커뮤니티 → 데시벨 측정(Web Audio API) → 마이페이지 순으로 핵심 플로우
-- AI: 운세 생성 API + 프롬프트 튜닝, (여유 시) 기록 AI 한 줄 평
+- AI: 운세 시드 문구 풀 + API(AI 생성은 후속), (여유 시) 기록 AI 한 줄 평
 
 **양념 (되면)**
 - 운세 화면, SNS 공유 카드 이미지, 배지 연출

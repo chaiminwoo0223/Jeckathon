@@ -13,7 +13,7 @@ from app.models import CommunityMember, Match, User
 
 def _url(cid: object, headers: dict[str, str]) -> str:
     token = headers["Authorization"].removeprefix("Bearer ")
-    return f"{settings.API_V1_STR}/communities/{cid}/space/ws?token={token}"
+    return f"{settings.API_V1_STR}/space/{cid}/ws?token={token}"
 
 
 def test_space_join_move_leave(
@@ -51,12 +51,16 @@ def test_space_join_move_leave(
             assert msg["user"] == next(
                 u for u in snap_b["users"] if u["user_id"] == snap_b["me"]
             )
-            # 범위 밖 좌표는 방 안으로 잘린다
-            a.send_json({"type": "move", "x": 99, "y": -5})
+            # 원 밖 좌표는 경기장 가장자리(반경 16.5)로 잘린다
+            a.send_json({"type": "move", "x": 99, "z": 0, "r": 0})
             # move는 TICK마다 사람별 마지막 위치를 모은 moves 프레임으로 온다
             while (msg := b.receive_json())["type"] != "moves":
                 pass
-            assert msg == {"type": "moves", "p": {a_id: [19, 0]}}
+            assert msg == {"type": "moves", "p": {a_id: [16.5, 0.0, 0.0]}}
+            a.send_json({"type": "say", "text": "  가자!  "})
+            while (msg := b.receive_json())["type"] != "say":
+                pass
+            assert msg == {"type": "say", "user_id": a_id, "text": "가자!"}
             b_id = snap_b["me"]
         while (msg := a.receive_json())["type"] != "leave":
             pass
@@ -99,12 +103,16 @@ def test_space_chat_same_order_for_everyone_and_history(
                 sent.append(f"{name}{i}")
                 ws.send_json({"type": "chat", "text": f"  {sent[-1]}  "})
         a.send_json({"type": "chat", "text": "   "})  # 빈 글은 버린다
-        assert chats(a, 6) == sent
-        assert chats(b, 6) == sent
+        # 두 사람이 거의 동시에 보내면 서버 도착 순서가 보낸 순서와 다를 수 있다.
+        # 지켜야 할 것: 모두 같은 순서로 받고, 한 사람이 보낸 것끼리는 순서가 유지된다
+        got = chats(a, 6)
+        assert chats(b, 6) == got
+        assert sorted(got) == sorted(sent)
+        assert [t for t in got if t[0] == "a"] == [t for t in sent if t[0] == "a"]
 
     # 나중에 들어온 사람은 snapshot의 chat으로 최근 기록을 받는다
     with client.websocket_connect(_url(cid, normal_user_token_headers)) as c:
-        assert [m["text"] for m in c.receive_json()["chat"]] == sent
+        assert [m["text"] for m in c.receive_json()["chat"]] == got
 
 
 def _community_without(db: Session, email: str) -> uuid.UUID:
@@ -121,7 +129,7 @@ def test_space_rejects_bad_token_unknown_community_and_non_member(
     client: TestClient, db: Session, normal_user_token_headers: dict[str, str]
 ) -> None:
     for url in (
-        f"{settings.API_V1_STR}/communities/{uuid.uuid4()}/space/ws?token=bad",
+        f"{settings.API_V1_STR}/space/{uuid.uuid4()}/ws?token=bad",
         _url(uuid.uuid4(), normal_user_token_headers),
         _url(
             _community_without(db, settings.EMAIL_TEST_USER), normal_user_token_headers
