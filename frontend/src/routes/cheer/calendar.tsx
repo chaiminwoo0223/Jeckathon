@@ -1,134 +1,271 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { Check, ChevronLeft, ChevronRight, X } from "lucide-react"
+import {
+  CalendarX2,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  RotateCw,
+  X,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Pill, SectionCard, SectionTitle, TeamLogo } from "@/cheer/components/primitives"
-import { formatKDate, formatTime, type Match, MATCH_DAYS, MATCHES, TODAY } from "@/cheer/data/mock"
+import {
+  Pill,
+  SectionCard,
+  SectionTitle,
+  TeamLogo,
+} from "@/cheer/components/primitives"
+import {
+  formatDateLabel,
+  formatKickoff,
+  involves,
+  kstDate,
+  monthCells,
+  type Outcome,
+  outcomeFor,
+  shiftMonth,
+  todayKst,
+  toUiTeam,
+  type UiTeam,
+  useMonthMatches,
+  useTeams,
+} from "@/cheer/data/schedule"
+import type { MatchDetail } from "@/client"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/cheer/calendar")({
   component: CalendarPage,
 })
 
-const YEAR = 2026
-const MONTH = 10 // 0-indexed → 11월
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 
+const OUTCOME_META: Record<Outcome, { label: string; color: string }> = {
+  WIN: { label: "승", color: "var(--c-win)" },
+  LOSE: { label: "패", color: "var(--c-lose)" },
+  DRAW: { label: "무", color: "var(--c-draw)" },
+}
+
 function CalendarPage() {
-  const [selected, setSelected] = useState(TODAY)
-  const [cheerMatch, setCheerMatch] = useState<Match | null>(null)
+  const today = todayKst()
+  const [month, setMonth] = useState(today.slice(0, 7))
+  const [picked, setPicked] = useState<string | null>(today)
+  const [teamId, setTeamId] = useState<string | null>(null)
+  const [cheerMatch, setCheerMatch] = useState<MatchDetail | null>(null)
 
-  const cells = useMemo(() => {
-    const first = new Date(YEAR, MONTH, 1)
-    const startPad = first.getDay()
-    const daysInMonth = new Date(YEAR, MONTH + 1, 0).getDate()
-    const arr: (number | null)[] = Array(startPad).fill(null)
-    for (let d = 1; d <= daysInMonth; d++) arr.push(d)
-    while (arr.length % 7 !== 0) arr.push(null)
-    return arr
-  }, [])
+  const matchesQuery = useMonthMatches(month)
+  const teamsQuery = useTeams()
 
-  const dayMatches = MATCHES.filter((m) => m.kickoffAt.slice(0, 10) === selected)
+  const teams = useMemo(
+    () =>
+      (teamsQuery.data ?? [])
+        .map(toUiTeam)
+        .sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    [teamsQuery.data],
+  )
+  const focusTeam = teams.find((t) => t.id === teamId) ?? null
 
-  const keyOf = (d: number) => `${YEAR}-${String(MONTH + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+  // date → matches (team filter applied)
+  const byDate = useMemo(() => {
+    const map = new Map<string, MatchDetail[]>()
+    for (const day of matchesQuery.data?.days ?? []) {
+      const list = teamId
+        ? day.matches.filter((m) => involves(m, teamId))
+        : day.matches
+      if (list.length > 0) map.set(day.date, list)
+    }
+    return map
+  }, [matchesQuery.data, teamId])
+
+  const firstGameDay = [...byDate.keys()].sort()[0]
+  const selected = picked?.startsWith(month)
+    ? picked
+    : today.startsWith(month)
+      ? today
+      : (firstGameDay ?? `${month}-01`)
+  const dayMatches = byDate.get(selected) ?? []
+
+  const summary = useMemo(() => {
+    const all = [...byDate.values()].flat()
+    const finished = all.filter((m) => m.status === "FINISHED").length
+    const record = { WIN: 0, LOSE: 0, DRAW: 0 }
+    if (teamId) {
+      for (const m of all) {
+        const o = outcomeFor(m, teamId)
+        if (o) record[o] += 1
+      }
+    }
+    return {
+      total: all.length,
+      finished,
+      upcoming: all.length - finished,
+      record,
+    }
+  }, [byDate, teamId])
+
+  const goMonth = (delta: number) => {
+    setMonth((m) => shiftMonth(m, delta))
+    setPicked(null)
+  }
+  const goToday = () => {
+    setMonth(today.slice(0, 7))
+    setPicked(today)
+  }
+
+  const [y, m] = month.split("-").map(Number)
 
   return (
-    <div className="cheer-reveal space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black tracking-tight">캘린더</h1>
-        <Pill>응원할 경기를 골라보세요</Pill>
+    <div className="cheer-reveal space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">캘린더</h1>
+          <p className="mt-1 text-sm text-[var(--c-muted)]">
+            KBO리그 2026 일정과 결과. 예정된 경기를 눌러 응원팀을 골라 보세요
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        {/* month grid */}
+      <TeamFilter
+        teams={teams}
+        loading={teamsQuery.isLoading}
+        value={teamId}
+        onChange={(id) => setTeamId(id)}
+      />
+
+      <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
         <SectionCard>
-          <div className="mb-4 flex items-center justify-between px-1">
-            <button type="button" className="grid size-8 place-items-center rounded-full hover:bg-[var(--c-surface-2)]">
-              <ChevronLeft size={18} />
-            </button>
-            <h2 className="text-lg font-black">{YEAR}년 11월</h2>
-            <button type="button" className="grid size-8 place-items-center rounded-full hover:bg-[var(--c-surface-2)]">
-              <ChevronRight size={18} />
-            </button>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="이전 달"
+                onClick={() => goMonth(-1)}
+              >
+                <ChevronLeft />
+              </Button>
+              <h2 className="min-w-[7.5rem] text-center text-lg font-black tabular-nums">
+                {y}년 {m}월
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="다음 달"
+                onClick={() => goMonth(1)}
+              >
+                <ChevronRight />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-1 rounded-full"
+                onClick={goToday}
+              >
+                오늘
+              </Button>
+            </div>
+            {matchesQuery.isSuccess && (
+              <MonthSummary focusTeam={focusTeam} summary={summary} />
+            )}
           </div>
 
-          <div className="mb-2 grid grid-cols-7 text-center text-xs font-bold text-[var(--c-muted)]">
+          <div className="mb-1.5 grid grid-cols-7 text-center text-xs font-bold text-[var(--c-muted)]">
             {WEEKDAYS.map((w, i) => (
-              <div key={w} className={cn(i === 0 && "text-[var(--c-lose)]")}>{w}</div>
+              <div
+                key={w}
+                className={cn(
+                  i === 0 && "text-[var(--c-lose)]",
+                  i === 6 && "text-[var(--c-primary)]",
+                )}
+              >
+                {w}
+              </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((d, i) => {
-              if (d === null) return <div key={`e${i}`} />
-              const k = keyOf(d)
-              const count = MATCH_DAYS[k]
-              const isSel = k === selected
-              const isSun = i % 7 === 0
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setSelected(k)}
-                  className={cn(
-                    "relative mx-auto grid aspect-square w-full max-w-[44px] place-items-center rounded-2xl text-sm font-bold transition-all",
-                    isSel
-                      ? "bg-[var(--c-primary)] text-white shadow-md"
-                      : "hover:bg-[var(--c-surface-2)]",
-                    !isSel && isSun && "text-[var(--c-lose)]",
-                  )}
-                >
-                  {d}
-                  {count && (
-                    <span className="absolute bottom-1 flex gap-0.5">
-                      {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
-                        <span
-                          key={j}
-                          className="size-1 rounded-full"
-                          style={{ background: isSel ? "#fff" : "var(--c-primary)" }}
-                        />
-                      ))}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+          {matchesQuery.isError ? (
+            <div className="grid place-items-center gap-3 rounded-2xl bg-[var(--c-surface-2)] py-16 text-center text-sm text-[var(--c-ink-soft)]">
+              경기 일정을 불러오지 못했어요
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => matchesQuery.refetch()}
+              >
+                <RotateCw /> 다시 시도
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {monthCells(month).map((date, i) =>
+                date === null ? (
+                  <div key={`pad-${i}`} />
+                ) : matchesQuery.isLoading ? (
+                  <Skeleton
+                    key={date}
+                    className="h-14 rounded-xl sm:h-[84px]"
+                  />
+                ) : (
+                  <DayCell
+                    key={date}
+                    date={date}
+                    weekday={i % 7}
+                    matches={byDate.get(date) ?? []}
+                    focusTeamId={teamId}
+                    isToday={date === today}
+                    isSelected={date === selected}
+                    onSelect={() => setPicked(date)}
+                  />
+                ),
+              )}
+            </div>
+          )}
+
+          {matchesQuery.isSuccess && summary.total === 0 && (
+            <p className="mt-3 text-center text-xs text-[var(--c-muted)]">
+              이 달에는 경기가 없어요
+            </p>
+          )}
+          {teamId && matchesQuery.isSuccess && summary.total > 0 && <Legend />}
         </SectionCard>
 
-        {/* day matches */}
         <SectionCard>
-          <SectionTitle>
-            {formatKDate(`${selected}T00:00:00`)} 경기 {dayMatches.length}개
+          <SectionTitle
+            right={
+              dayMatches.length > 0 && (
+                <span className="text-xs font-bold text-[var(--c-muted)]">
+                  {dayMatches.length}경기
+                </span>
+              )
+            }
+          >
+            {formatDateLabel(selected)}
           </SectionTitle>
-          {dayMatches.length === 0 ? (
-            <div className="grid place-content-center gap-2 py-12 text-center text-sm text-[var(--c-muted)]">
-              <span className="text-3xl">🗓️</span>
-              이 날은 등록된 경기가 없어요
+
+          {matchesQuery.isLoading ? (
+            <div className="space-y-2.5">
+              {[0, 1, 2].map((k) => (
+                <Skeleton key={k} className="h-[118px] rounded-2xl" />
+              ))}
+            </div>
+          ) : dayMatches.length === 0 ? (
+            <div className="grid place-items-center gap-2 py-14 text-center text-sm text-[var(--c-muted)]">
+              <CalendarX2 className="size-8 opacity-60" />
+              {focusTeam
+                ? `이 날은 ${focusTeam.name} 경기가 없어요`
+                : "이 날은 경기가 없어요"}
             </div>
           ) : (
             <ul className="space-y-2.5">
-              {dayMatches.map((m) => (
-                <li key={m.id}>
-                  <button
-                    type="button"
-                    onClick={() => setCheerMatch(m)}
-                    className="flex w-full items-center gap-3 rounded-2xl border bg-[var(--c-surface)] p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                    style={{ borderColor: "var(--c-line)" }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <TeamLogo team={m.home} size={30} />
-                      <span className="text-xs font-bold text-[var(--c-muted)]">VS</span>
-                      <TeamLogo team={m.away} size={30} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-extrabold">
-                        {m.home.name} <span className="text-[var(--c-muted)]">vs</span> {m.away.name}
-                      </p>
-                      <p className="text-xs text-[var(--c-muted)]">{m.league}</p>
-                    </div>
-                    <span className="shrink-0 text-sm font-black text-[var(--c-primary)]">{formatTime(m.kickoffAt)}</span>
-                  </button>
+              {dayMatches.map((match) => (
+                <li key={match.id}>
+                  <MatchCard
+                    match={match}
+                    focusTeamId={teamId}
+                    onCheer={() => setCheerMatch(match)}
+                  />
                 </li>
               ))}
             </ul>
@@ -141,7 +278,7 @@ function CalendarPage() {
           match={cheerMatch}
           onClose={() => setCheerMatch(null)}
           onConfirm={(team) => {
-            toast.success(`${team} 응원팀 설정 완료! 📣`)
+            toast.success(`${team} 응원팀으로 설정했어요`)
             setCheerMatch(null)
           }}
         />
@@ -150,25 +287,384 @@ function CalendarPage() {
   )
 }
 
+function TeamFilter({
+  teams,
+  loading,
+  value,
+  onChange,
+}: {
+  teams: UiTeam[]
+  loading: boolean
+  value: string | null
+  onChange: (id: string | null) => void
+}) {
+  const chip =
+    "flex shrink-0 items-center gap-1.5 rounded-full border py-1 pr-3 text-sm font-bold transition-colors"
+  return (
+    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        aria-pressed={value === null}
+        className={cn(
+          chip,
+          "pl-3",
+          value === null
+            ? "border-[var(--c-primary)] bg-[var(--c-primary)] text-white"
+            : "border-[var(--c-line)] bg-[var(--c-surface)] hover:bg-[var(--c-surface-2)]",
+        )}
+      >
+        전체
+      </button>
+      {loading
+        ? [0, 1, 2, 3, 4, 5].map((k) => (
+            <Skeleton key={k} className="h-8 w-20 shrink-0 rounded-full" />
+          ))
+        : teams.map((t) => {
+            const on = value === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onChange(on ? null : t.id)}
+                aria-pressed={on}
+                aria-label={t.name}
+                className={cn(
+                  chip,
+                  "pl-1",
+                  on
+                    ? "border-[var(--c-primary)] bg-[var(--c-primary-50)] text-[var(--c-primary)]"
+                    : "border-[var(--c-line)] bg-[var(--c-surface)] hover:bg-[var(--c-surface-2)]",
+                )}
+              >
+                <TeamLogo team={t} size={24} />
+                {t.name}
+              </button>
+            )
+          })}
+    </div>
+  )
+}
+
+function MonthSummary({
+  focusTeam,
+  summary,
+}: {
+  focusTeam: UiTeam | null
+  summary: {
+    total: number
+    finished: number
+    upcoming: number
+    record: Record<Outcome, number>
+  }
+}) {
+  if (summary.total === 0) return null
+  const { WIN, LOSE, DRAW } = summary.record
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+      {focusTeam && summary.finished > 0 && (
+        <Pill color="var(--c-ink)" bg="var(--c-surface-2)">
+          {WIN}승 {LOSE}패{DRAW > 0 ? ` ${DRAW}무` : ""}
+        </Pill>
+      )}
+      <Pill color="var(--c-ink-soft)" bg="var(--c-surface-2)">
+        {summary.total}경기
+      </Pill>
+      {summary.upcoming > 0 && <Pill>예정 {summary.upcoming}</Pill>}
+    </div>
+  )
+}
+
+function DayCell({
+  date,
+  weekday,
+  matches,
+  focusTeamId,
+  isToday,
+  isSelected,
+  onSelect,
+}: {
+  date: string
+  weekday: number
+  matches: MatchDetail[]
+  focusTeamId: string | null
+  isToday: boolean
+  isSelected: boolean
+  onSelect: () => void
+}) {
+  const day = Number(date.slice(8))
+  const hasGames = matches.length > 0
+  const focusMatch = focusTeamId ? matches[0] : undefined
+  const rounds = [...new Set(matches.map((m) => m.round_label).filter(Boolean))]
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isSelected}
+      className={cn(
+        "flex h-14 flex-col items-center gap-0.5 rounded-xl border p-1 text-left transition-colors sm:h-[84px] sm:items-stretch sm:p-1.5",
+        isSelected
+          ? "border-[var(--c-primary)] bg-[var(--c-primary-50)]"
+          : hasGames
+            ? "border-[var(--c-line)] hover:bg-[var(--c-surface-2)]"
+            : "border-[var(--c-line)]/50 hover:bg-[var(--c-surface-2)]",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-6 place-items-center rounded-full text-xs font-extrabold tabular-nums",
+          isToday
+            ? "bg-[var(--c-primary)] text-white"
+            : !hasGames
+              ? "text-[var(--c-muted)]"
+              : weekday === 0
+                ? "text-[var(--c-lose)]"
+                : weekday === 6 && "text-[var(--c-primary)]",
+        )}
+      >
+        {day}
+      </span>
+
+      {hasGames && focusMatch && focusTeamId ? (
+        <FocusCellBody match={focusMatch} teamId={focusTeamId} />
+      ) : hasGames ? (
+        <>
+          <span className="mt-auto size-1.5 rounded-full bg-[var(--c-primary)] sm:hidden" />
+          <span className="mt-auto hidden truncate text-[11px] font-bold text-[var(--c-primary)] sm:block">
+            {rounds[0] ?? `${matches.length}경기`}
+          </span>
+        </>
+      ) : null}
+    </button>
+  )
+}
+
+// 팀 필터 모드: 상대 팀 + 결과(또는 시작 시각)
+function FocusCellBody({
+  match,
+  teamId,
+}: {
+  match: MatchDetail
+  teamId: string
+}) {
+  const isHome = match.home_team_id === teamId
+  const opponent = toUiTeam(isHome ? match.away_team : match.home_team)
+  const outcome = outcomeFor(match, teamId)
+  const mine = isHome ? match.home_score : match.away_score
+  const theirs = isHome ? match.away_score : match.home_score
+
+  return (
+    <div className="mt-auto flex flex-col items-center gap-0.5 sm:items-start">
+      <div className="hidden min-w-0 items-center gap-1 text-[11px] font-bold sm:flex">
+        <span className="text-[var(--c-muted)]">{isHome ? "vs" : "@"}</span>
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ background: opponent.color }}
+        />
+        <span className="truncate">{opponent.name}</span>
+      </div>
+      {outcome ? (
+        <span
+          className="text-[11px] font-black tabular-nums"
+          style={{ color: OUTCOME_META[outcome].color }}
+        >
+          {OUTCOME_META[outcome].label}
+          <span className="hidden sm:inline">
+            {" "}
+            {mine}-{theirs}
+          </span>
+        </span>
+      ) : (
+        <span className="text-[11px] font-bold tabular-nums text-[var(--c-ink-soft)]">
+          <span className="sm:hidden">{opponent.short}</span>
+          <span className="hidden sm:inline">
+            {formatKickoff(match.kickoff_at)}
+          </span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+function Legend() {
+  return (
+    <div className="mt-3 flex items-center justify-end gap-3 text-[11px] font-bold text-[var(--c-muted)]">
+      {(Object.keys(OUTCOME_META) as Outcome[]).map((o) => (
+        <span key={o} className="flex items-center gap-1">
+          <span
+            className="size-2 rounded-full"
+            style={{ background: OUTCOME_META[o].color }}
+          />
+          {OUTCOME_META[o].label}
+        </span>
+      ))}
+      <span>vs 홈 · @ 원정</span>
+    </div>
+  )
+}
+
+function MatchCard({
+  match,
+  focusTeamId,
+  onCheer,
+}: {
+  match: MatchDetail
+  focusTeamId: string | null
+  onCheer: () => void
+}) {
+  const home = toUiTeam(match.home_team)
+  const away = toUiTeam(match.away_team)
+  const finished =
+    match.status === "FINISHED" &&
+    match.home_score != null &&
+    match.away_score != null
+  const homeScore = match.home_score ?? 0
+  const awayScore = match.away_score ?? 0
+  const homeWon = finished && homeScore > awayScore
+  const awayWon = finished && awayScore > homeScore
+  const focusOutcome = focusTeamId ? outcomeFor(match, focusTeamId) : null
+
+  return (
+    <div
+      className="rounded-2xl border bg-[var(--c-surface)] p-4"
+      style={{ borderColor: "var(--c-line)" }}
+    >
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-1.5">
+          <StatusPill status={match.status ?? "SCHEDULED"} />
+          {match.round_label && <Pill>{match.round_label}</Pill>}
+          {focusOutcome && (
+            <Pill color="#fff" bg={OUTCOME_META[focusOutcome].color}>
+              {OUTCOME_META[focusOutcome].label}
+            </Pill>
+          )}
+        </div>
+        {match.venue && (
+          <span className="flex items-center gap-1 font-bold text-[var(--c-muted)]">
+            <MapPin size={12} />
+            {match.venue}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <TeamSide
+          team={away}
+          side="원정"
+          dim={finished && !awayWon && homeWon}
+        />
+        <div className="text-center">
+          {finished ? (
+            <p className="text-2xl font-black tabular-nums">
+              <span
+                className={cn(!awayWon && homeWon && "text-[var(--c-muted)]")}
+              >
+                {match.away_score}
+              </span>
+              <span className="mx-1.5 text-[var(--c-muted)]">:</span>
+              <span
+                className={cn(!homeWon && awayWon && "text-[var(--c-muted)]")}
+              >
+                {match.home_score}
+              </span>
+            </p>
+          ) : (
+            <>
+              <p className="text-xl font-black tabular-nums text-[var(--c-primary)]">
+                {formatKickoff(match.kickoff_at)}
+              </p>
+              <p className="text-[10px] font-bold text-[var(--c-muted)]">VS</p>
+            </>
+          )}
+        </div>
+        <TeamSide team={home} side="홈" dim={finished && !homeWon && awayWon} />
+      </div>
+
+      {match.status === "SCHEDULED" && (
+        <button
+          type="button"
+          onClick={onCheer}
+          className="mt-3 w-full rounded-xl bg-[var(--c-primary)] py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-[var(--c-primary-600)]"
+        >
+          이 경기 응원하기
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TeamSide({
+  team,
+  side,
+  dim,
+}: {
+  team: UiTeam
+  side: "홈" | "원정"
+  dim: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-1.5 text-center",
+        dim && "opacity-55",
+      )}
+    >
+      <TeamLogo team={team} size={40} />
+      <div>
+        <p className="text-sm font-extrabold leading-tight">{team.name}</p>
+        <p className="text-[10px] font-bold text-[var(--c-muted)]">{side}</p>
+      </div>
+    </div>
+  )
+}
+
+function StatusPill({
+  status,
+}: {
+  status: NonNullable<MatchDetail["status"]>
+}) {
+  if (status === "LIVE")
+    return (
+      <Pill color="#fff" bg="var(--c-lose)">
+        LIVE
+      </Pill>
+    )
+  if (status === "FINISHED")
+    return (
+      <Pill color="var(--c-ink-soft)" bg="var(--c-surface-2)">
+        종료
+      </Pill>
+    )
+  return <Pill>예정</Pill>
+}
+
 function CheerDialog({
   match,
   onClose,
   onConfirm,
 }: {
-  match: Match
+  match: MatchDetail
   onClose: () => void
   onConfirm: (teamName: string) => void
 }) {
-  const [picked, setPicked] = useState<number | null>(null)
-  const teams = [match.home, match.away]
+  const [picked, setPicked] = useState<string | null>(null)
+  const teams = [toUiTeam(match.away_team), toUiTeam(match.home_team)]
+  const pickedTeam = teams.find((t) => t.id === picked)
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-black/40" />
+      <button
+        type="button"
+        aria-label="닫기"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40"
+      />
       <div className="cheer-pop relative z-10 w-full max-w-sm overflow-hidden rounded-[26px] bg-[var(--c-surface)] shadow-2xl">
         <div className="relative h-28 cheer-hero">
           <button
             type="button"
+            aria-label="닫기"
             onClick={onClose}
             className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30"
           >
@@ -177,13 +673,19 @@ function CheerDialog({
         </div>
         <div className="p-6">
           <h3 className="text-center text-lg font-black">
-            {match.home.name} <span className="text-[var(--c-muted)]">VS</span> {match.away.name}
+            {match.away_team.name}{" "}
+            <span className="text-[var(--c-muted)]">@</span>{" "}
+            {match.home_team.name}
           </h3>
           <p className="mt-1 text-center text-xs text-[var(--c-muted)]">
-            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} · {match.league}
+            {formatDateLabel(kstDate(match.kickoff_at))}{" "}
+            {formatKickoff(match.kickoff_at)}
+            {match.venue && ` · ${match.venue}`}
           </p>
 
-          <p className="mb-3 mt-5 text-center text-sm font-bold text-[var(--c-ink-soft)]">어떤 팀을 응원하나요?</p>
+          <p className="mb-3 mt-5 text-center text-sm font-bold text-[var(--c-ink-soft)]">
+            어떤 팀을 응원하나요?
+          </p>
           <div className="grid grid-cols-2 gap-3">
             {teams.map((t) => {
               const on = picked === t.id
@@ -194,7 +696,9 @@ function CheerDialog({
                   onClick={() => setPicked(t.id)}
                   className={cn(
                     "relative flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all",
-                    on ? "border-[var(--c-primary)] bg-[var(--c-primary-50)]" : "border-[var(--c-line)]",
+                    on
+                      ? "border-[var(--c-primary)] bg-[var(--c-primary-50)]"
+                      : "border-[var(--c-line)]",
                   )}
                 >
                   {on && (
@@ -211,8 +715,8 @@ function CheerDialog({
 
           <button
             type="button"
-            disabled={picked === null}
-            onClick={() => onConfirm(teams.find((t) => t.id === picked)!.name)}
+            disabled={!pickedTeam}
+            onClick={() => pickedTeam && onConfirm(pickedTeam.name)}
             className="mt-6 w-full rounded-2xl bg-[var(--c-primary)] py-3.5 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)] disabled:opacity-40"
           >
             응원팀 설정 완료
