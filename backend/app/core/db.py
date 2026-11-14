@@ -4,7 +4,8 @@ from sqlmodel import Session, create_engine, select
 
 from app import crud
 from app.core.config import settings
-from app.models import Match, MatchStatus, Team, User, UserCreate
+from app.models import Badge, Match, MatchStatus, Team, User, UserCreate
+from app.services.settlement import BADGES
 
 engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
 
@@ -35,6 +36,15 @@ def init_db(session: Session) -> None:
         user = crud.create_user(session=session, user_create=user_in)
 
     _seed_teams_and_matches(session)
+    _seed_badges(session)
+
+
+def _seed_badges(session: Session) -> None:
+    existing = set(session.exec(select(Badge.code)).all())
+    for code, name, description in BADGES:
+        if code not in existing:
+            session.add(Badge(code=code, name=name, description=description))
+    session.commit()
 
 
 def _seed_teams_and_matches(session: Session) -> None:
