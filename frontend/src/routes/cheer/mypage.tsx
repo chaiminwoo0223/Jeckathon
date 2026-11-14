@@ -23,6 +23,7 @@ import {
   winRate,
 } from "@/cheer/data/mock"
 import { downloadShareCard } from "@/cheer/lib/share-image"
+import { useMe } from "@/cheer/hooks/use-me"
 import useAuth from "@/hooks/useAuth"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/cheer/mypage")({
 function MyPage() {
   const { u } = Route.useSearch()
   const { user } = useAuth()
+  const { data: me } = useMe()
   const profile = (u != null ? getProfile(u) : undefined) ?? ME_PROFILE
   const isOwner = profile.id === ME.id
 
@@ -56,7 +58,7 @@ function MyPage() {
 
   // 본인 이름은 실제 로그인 사용자 기준, 없으면 목업 닉네임
   const authName =
-    user?.full_name || user?.email?.split("@")[0] || ME_PROFILE.nickname
+    me?.nickname || user?.email?.split("@")[0] || ME_PROFILE.nickname
   // 본인 프로필 닉네임 인라인 편집 (목업: 편집 전까지 로그인 이름을 따라감)
   const [editedNick, setEditedNick] = useState<string | null>(null)
   const ownerName = editedNick ?? authName

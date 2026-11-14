@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { battlesReadBattleData, battlesReadBattleErrors, battlesReadBattleResponses, battlesReadBattleResultData, battlesReadBattleResultErrors, battlesReadBattleResultResponses, battlesStartBattleData, battlesStartBattleErrors, battlesStartBattleResponses, battlesSubmitRecordData, battlesSubmitRecordErrors, battlesSubmitRecordResponses, communitiesReadTodayCommunityData, communitiesReadTodayCommunityResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginCheckUsernameData, loginCheckUsernameErrors, loginCheckUsernameResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLoginData, loginLoginErrors, loginLoginResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginSignupData, loginSignupErrors, loginSignupResponses, loginTestTokenData, loginTestTokenResponses, matchesCheerMatchData, matchesCheerMatchErrors, matchesCheerMatchResponses, matchesReadMatchData, matchesReadMatchErrors, matchesReadMatchesByMonthData, matchesReadMatchesByMonthErrors, matchesReadMatchesByMonthResponses, matchesReadMatchesTodayData, matchesReadMatchesTodayResponses, matchesReadMatchResponses, meAddMyTeamData, meAddMyTeamErrors, meAddMyTeamResponses, meReadMeData, meReadMeResponses, meReadMyRecordsData, meReadMyRecordsErrors, meReadMyRecordsResponses, meReadMyStatsData, meReadMyStatsResponses, meReadMyTeamsData, meReadMyTeamsResponses, meReadSettingsData, meReadSettingsResponses, meRemoveMyTeamData, meRemoveMyTeamErrors, meRemoveMyTeamResponses, meUpdateProfileData, meUpdateProfileErrors, meUpdateProfileResponses, meUpdateSettingsData, meUpdateSettingsErrors, meUpdateSettingsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, teamsReadTeamsData, teamsReadTeamsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { adminFinishMatchData, adminFinishMatchErrors, adminFinishMatchResponses, battlesReadBattleData, battlesReadBattleErrors, battlesReadBattleResponses, battlesReadBattleResultData, battlesReadBattleResultErrors, battlesReadBattleResultResponses, battlesStartBattleData, battlesStartBattleErrors, battlesStartBattleResponses, battlesSubmitRecordData, battlesSubmitRecordErrors, battlesSubmitRecordResponses, communitiesJoinCommunityData, communitiesJoinCommunityErrors, communitiesJoinCommunityResponses, communitiesLeaveCommunityData, communitiesLeaveCommunityErrors, communitiesLeaveCommunityResponses, communitiesReadCommunityMembersData, communitiesReadCommunityMembersErrors, communitiesReadCommunityMembersResponses, communitiesReadMatchCommunityData, communitiesReadMatchCommunityErrors, communitiesReadMatchCommunityResponses, communitiesReadMyCommunitiesData, communitiesReadMyCommunitiesResponses, communitiesReadTodayCommunityData, communitiesReadTodayCommunityResponses, itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginCheckUsernameData, loginCheckUsernameErrors, loginCheckUsernameResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginLoginData, loginLoginErrors, loginLoginResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginSignupData, loginSignupErrors, loginSignupResponses, loginTestTokenData, loginTestTokenResponses, matchesCheerMatchData, matchesCheerMatchErrors, matchesCheerMatchResponses, matchesReadMatchData, matchesReadMatchErrors, matchesReadMatchesByMonthData, matchesReadMatchesByMonthErrors, matchesReadMatchesByMonthResponses, matchesReadMatchesTodayData, matchesReadMatchesTodayResponses, matchesReadMatchResponses, meAddMyTeamData, meAddMyTeamErrors, meAddMyTeamResponses, meReadMeData, meReadMeResponses, meReadMyBadgesData, meReadMyBadgesResponses, meReadMyPointsData, meReadMyPointsErrors, meReadMyPointsResponses, meReadMyRecordsData, meReadMyRecordsErrors, meReadMyRecordsResponses, meReadMyStatsData, meReadMyStatsResponses, meReadMyTeamsData, meReadMyTeamsResponses, meReadSettingsData, meReadSettingsResponses, meReadShareCardData, meReadShareCardResponses, meRemoveMyTeamData, meRemoveMyTeamErrors, meRemoveMyTeamResponses, meUpdateProfileData, meUpdateProfileErrors, meUpdateProfileResponses, meUpdateSettingsData, meUpdateSettingsErrors, meUpdateSettingsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, teamsReadTeamsData, teamsReadTeamsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -529,6 +529,20 @@ export class MeService {
     }
     
     /**
+     * Read Share Card
+     *
+     * SNS 공유 카드 데이터: 닉네임, 요정, 승률·경기수, 최애팀.
+     */
+    public static readShareCard<ThrowOnError extends boolean = true>(options?: Options<meReadShareCardData, ThrowOnError>) {
+        return (options?.client ?? client).get<meReadShareCardResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/me/share-card',
+            ...options
+        });
+    }
+    
+    /**
      * Update Profile
      *
      * 닉네임·한 줄 소개·프로필 이미지 수정. 보내지 않은 필드는 그대로 둔다.
@@ -623,9 +637,73 @@ export class MeService {
             ...options
         });
     }
+    
+    /**
+     * Read My Points
+     *
+     * 내 포인트 내역. 최신순, 1부터 시작하는 page.
+     */
+    public static readMyPoints<ThrowOnError extends boolean = true>(options?: Options<meReadMyPointsData, ThrowOnError>) {
+        return (options?.client ?? client).get<meReadMyPointsResponses, meReadMyPointsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/me/points',
+            ...options
+        });
+    }
+    
+    /**
+     * Read My Badges
+     *
+     * 내가 얻은 배지. 최근 획득 순.
+     */
+    public static readMyBadges<ThrowOnError extends boolean = true>(options?: Options<meReadMyBadgesData, ThrowOnError>) {
+        return (options?.client ?? client).get<meReadMyBadgesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/me/badges',
+            ...options
+        });
+    }
+}
+
+export class AdminService {
+    /**
+     * Finish Match
+     *
+     * 경기 종료를 발동한다(데모용 수동 트리거). 한 트랜잭션으로 스코어 저장, 응원 기록 확정,
+     * 포인트 지급, 배지 평가를 끝낸다. 이미 종료된 경기는 409.
+     */
+    public static finishMatch<ThrowOnError extends boolean = true>(options: Options<adminFinishMatchData, ThrowOnError>) {
+        return (options.client ?? client).patch<adminFinishMatchResponses, adminFinishMatchErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/admin/matches/{id}/finish',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
 }
 
 export class CommunitiesService {
+    /**
+     * Read My Communities
+     *
+     * 내가 응원 신청한 경기(종료 전)를 KST 날짜별로 묶은 목록과 경기별 입장 가능 여부.
+     * 신청한 경기가 없으면 `days`가 비어 있다(프론트가 캘린더로 보낸다).
+     */
+    public static readMyCommunities<ThrowOnError extends boolean = true>(options?: Options<communitiesReadMyCommunitiesData, ThrowOnError>) {
+        return (options?.client ?? client).get<communitiesReadMyCommunitiesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/communities/mine',
+            ...options
+        });
+    }
+    
     /**
      * Read Today Community
      *
@@ -635,6 +713,63 @@ export class CommunitiesService {
         return (options?.client ?? client).get<communitiesReadTodayCommunityResponses, unknown, ThrowOnError>({
             responseType: 'json',
             url: '/api/v1/communities/today',
+            ...options
+        });
+    }
+    
+    /**
+     * Join Community
+     *
+     * 입장(초대장 → 입장). 응원 신청한 경기만, 경기 시작 1시간 전부터 종료 전까지 가능하다.
+     * 이미 멤버면 그대로 성공한다.
+     */
+    public static joinCommunity<ThrowOnError extends boolean = true>(options: Options<communitiesJoinCommunityData, ThrowOnError>) {
+        return (options.client ?? client).post<communitiesJoinCommunityResponses, communitiesJoinCommunityErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/communities/{id}/join',
+            ...options
+        });
+    }
+    
+    /**
+     * Leave Community
+     *
+     * 나가기. 멤버가 아니어도 성공한다.
+     */
+    public static leaveCommunity<ThrowOnError extends boolean = true>(options: Options<communitiesLeaveCommunityData, ThrowOnError>) {
+        return (options.client ?? client).post<communitiesLeaveCommunityResponses, communitiesLeaveCommunityErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/communities/{id}/leave',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Community Members
+     *
+     * 멤버 목록: 닉네임·프로필 이미지·레벨·요정 타입. 입장 순.
+     */
+    public static readCommunityMembers<ThrowOnError extends boolean = true>(options: Options<communitiesReadCommunityMembersData, ThrowOnError>) {
+        return (options.client ?? client).get<communitiesReadCommunityMembersResponses, communitiesReadCommunityMembersErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/communities/{id}/members',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Match Community
+     *
+     * 경기별 커뮤니티 정보: 멤버 수, 내 입장 여부, 입장 가능 시각. 없으면 만든다.
+     */
+    public static readMatchCommunity<ThrowOnError extends boolean = true>(options: Options<communitiesReadMatchCommunityData, ThrowOnError>) {
+        return (options.client ?? client).get<communitiesReadMatchCommunityResponses, communitiesReadMatchCommunityErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/matches/{id}/community',
             ...options
         });
     }
@@ -694,7 +829,7 @@ export class BattlesService {
     /**
      * Read Battle Result
      *
-     * 종료 후 TOP3, 내 기록, 내 상위 %.
+     * 종료 후 TOP3(받은 포인트 포함), 내 기록, 내 상위 %, 내가 받은 포인트.
      */
     public static readBattleResult<ThrowOnError extends boolean = true>(options: Options<battlesReadBattleResultData, ThrowOnError>) {
         return (options.client ?? client).get<battlesReadBattleResultResponses, battlesReadBattleResultErrors, ThrowOnError>({

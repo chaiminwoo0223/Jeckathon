@@ -64,6 +64,7 @@ type Player = {
   peakDb: number
   emoji: string
   me?: boolean
+  points?: number // 서버 결과의 실제 지급 포인트
 }
 const BATTLE_SECONDS = 20
 const TARGET_DB = 90
@@ -675,7 +676,7 @@ function mockStandings(myPeak: number) {
 
 function serverStandings(r: BattleResult) {
   return {
-    top3: r.top3.map((e) => toPlayer(e, r.me.rank)),
+    top3: r.top3.map((e) => ({ ...toPlayer(e, r.me.rank), points: e.points })),
     myPeakDb: r.me.peak_db ?? 0,
     myPercentile: r.my_top_percent ?? 100,
   }
@@ -813,7 +814,7 @@ function Result({
                     {p.nickname}
                   </span>
                   <span className="font-black text-[var(--c-primary)]">
-                    +{BATTLE_REWARDS[i]}P
+                    +{p.points ?? BATTLE_REWARDS[i]}P
                   </span>
                 </li>
               ))}

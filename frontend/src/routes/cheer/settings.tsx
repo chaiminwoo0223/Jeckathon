@@ -5,6 +5,7 @@ import { Mascot } from "@/cheer/components/mascot"
 import { SectionCard, TeamLogo } from "@/cheer/components/primitives"
 import { ME } from "@/cheer/data/mock"
 import { type Theme, useTheme } from "@/components/theme-provider"
+import { useMe } from "@/cheer/hooks/use-me"
 import useAuth from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +15,8 @@ export const Route = createFileRoute("/cheer/settings")({
 
 function SettingsPage() {
   const { user } = useAuth()
-  const displayName = user?.full_name || user?.email?.split("@")[0] || ME.nickname
+  const { data: me } = useMe()
+  const displayName = me?.nickname || user?.email?.split("@")[0] || ME.nickname
   const [toggles, setToggles] = useState({
     notifyMatch: true,
     notifyInvite: true,
