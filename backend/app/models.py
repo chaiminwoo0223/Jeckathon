@@ -335,58 +335,6 @@ class UsernameCheck(SQLModel):
     available: bool
 
 
-class CheerResult(enum.StrEnum):
-    PENDING = "PENDING"  # 경기 종료 전
-    WIN = "WIN"
-    DRAW = "DRAW"
-    LOSE = "LOSE"
-
-
-class CheerRecord(SQLModel, table=True):
-    """응원 기록. 유저는 한 경기에 한 번만 응원팀을 고른다."""
-
-    __table_args__ = (UniqueConstraint("user_id", "match_id"),)
-
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(
-        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
-    )
-    match_id: uuid.UUID = Field(
-        foreign_key="match.id", nullable=False, index=True, ondelete="CASCADE"
-    )
-    cheered_team_id: uuid.UUID = Field(foreign_key="team.id", nullable=False)
-    result: CheerResult = Field(default=CheerResult.PENDING)
-    points_earned: int = 0
-    created_at: datetime = Field(
-        default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),
-    )
-
-
-class CheerIn(SQLModel):
-    cheered_team_id: uuid.UUID
-
-
-class CheerRecordPublic(SQLModel):
-    id: uuid.UUID
-    match_id: uuid.UUID
-    cheered_team_id: uuid.UUID
-    result: CheerResult
-    points_earned: int
-    created_at: datetime
-
-
-class CheerRecordItem(CheerRecordPublic):
-    match: MatchDetail  # 목록 화면이 경기·팀 정보를 바로 그린다
-
-
-class CheerRecordsPublic(SQLModel):
-    data: list[CheerRecordItem]
-    count: int  # 전체 기록 수
-    page: int
-    size: int
-
-
 # --- BE-2 ---
 class Community(SQLModel, table=True):
     """경기 1개당 1개 응원방."""
@@ -484,3 +432,55 @@ class BattleResult(SQLModel):
     me: BattleMe
     my_top_percent: int | None = None  # 상위 몇 %인지, 미참여면 None
     participants: int
+
+
+class CheerResult(enum.StrEnum):
+    PENDING = "PENDING"  # 경기 종료 전
+    WIN = "WIN"
+    DRAW = "DRAW"
+    LOSE = "LOSE"
+
+
+class CheerRecord(SQLModel, table=True):
+    """응원 기록. 유저는 한 경기에 한 번만 응원팀을 고른다."""
+
+    __table_args__ = (UniqueConstraint("user_id", "match_id"),)
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    match_id: uuid.UUID = Field(
+        foreign_key="match.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    cheered_team_id: uuid.UUID = Field(foreign_key="team.id", nullable=False)
+    result: CheerResult = Field(default=CheerResult.PENDING)
+    points_earned: int = 0
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class CheerIn(SQLModel):
+    cheered_team_id: uuid.UUID
+
+
+class CheerRecordPublic(SQLModel):
+    id: uuid.UUID
+    match_id: uuid.UUID
+    cheered_team_id: uuid.UUID
+    result: CheerResult
+    points_earned: int
+    created_at: datetime
+
+
+class CheerRecordItem(CheerRecordPublic):
+    match: MatchDetail  # 목록 화면이 경기·팀 정보를 바로 그린다
+
+
+class CheerRecordsPublic(SQLModel):
+    data: list[CheerRecordItem]
+    count: int  # 전체 기록 수
+    page: int
+    size: int
