@@ -1,0 +1,40 @@
+# Deploy main to the home server.
+# GitHub only schedules the job; it runs on a self-hosted runner on the home
+# server, which builds the image and restarts the stack there.
+name: Deploy (home server)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-home
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'chaiminwoo0223/Jeckathon'
+    runs-on: [self-hosted, jeckathon-home]
+    timeout-minutes: 30
+    environment:
+      name: home
+      url: https://cheer101.infoedu.co.kr
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build and restart
+        run: bash deploy/home/deploy.sh
+
+      # The runner is on the server itself, whose local DNS may not know the
+      # name yet, so hit its own Caddy (TLS + routing) via 127.0.0.1.
+      - name: Smoke test
+        run: >-
+          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors
+          --resolve cheer101.infoedu.co.kr:443:127.0.0.1
+          https://cheer101.infoedu.co.kr/api/v1/utils/health-check/

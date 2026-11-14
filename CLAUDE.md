@@ -51,6 +51,13 @@
 - 휴대폰 시연: 마이크(getUserMedia)는 HTTPS에서만 된다. `cloudflared tunnel --url http://localhost:5173`으로 열고, vite `server.proxy`로 `/api`를 8000에 넘기고 `VITE_API_URL`을 비운다. 터널 도메인은 vite `server.allowedHosts`에 추가한다.
 - 데시벨: Web Audio 값은 dBFS(≤0)다. 명세의 110dB는 `dBFS + 고정 오프셋`인 게임용 값이고 실제 SPL이 아니다.
 
+## 배포
+
+- `main`에 합쳐지면 GitHub Actions `Deploy (home server)`가 홈서버의 self-hosted runner에서 `deploy/home/deploy.sh`를 돌려 https://cheer101.infoedu.co.kr 에 올린다. 다시 올리려면 Actions 탭에서 Run workflow.
+- 화면은 백엔드 이미지에 빌드돼 같은 주소로 나간다(`VITE_API_URL` 비움). 배포마다 migration·시드(`prestart.sh`)가 돈다. 실패하면 워크플로가 빨간불이고 로그 끝에 prestart 로그가 찍힌다.
+- 운영 비밀값(SECRET_KEY, DB·superuser 비밀번호, AI_API_KEY)은 서버 파일에만 있다. 바꿀 일이 있으면 배포 담당(SonAIengine)에게.
+- `deploy/`, `.github/`는 배포 담당 영역이다.
+
 ## Git
 
 - 브랜치: `be1/<주제>`, `be2/<주제>`, `ai/<주제>`, `fe/<주제>`. 작게 자주 main에 합친다.
