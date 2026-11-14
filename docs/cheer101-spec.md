@@ -316,12 +316,46 @@ Fortune {
 
 | Method | Path | 설명 |
 | --- | --- | --- |
+| GET | /communities/mine | 내가 응원 신청한 경기(종료 전)를 KST 날짜별로 묶은 목록 + 경기별 입장 가능 여부 (커뮤니티 홈) |
 | GET | /communities/today | 오늘의 커뮤니티 (대표 경기 1개 + 메타) |
 | GET | /matches/{id}/community | 경기별 커뮤니티 정보 (멤버 수, 내 입장 여부) |
-| POST | /communities/{id}/join | 입장 (초대장 → 입장) |
+| POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
 | WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
+
+**입장 규칙**
+
+- 응원 신청(§4.3 `POST /matches/{id}/cheer`)한 경기의 커뮤니티에만 입장할 수 있다.
+- 입장은 **경기 시작(`kickoffAt`) 1시간 전부터 경기 종료(`FINISHED`)까지** 가능하다. 경기 상태는 자동으로 LIVE가 되지 않으므로(스케줄러 없음) 상태가 아니라 **시간**으로 판단한다: `now >= kickoffAt - 1시간 && status != FINISHED`.
+- 이 판단은 서버가 하고 응답에 담는다(`enterOpensAt`, `canEnter`). 브라우저 시계에 의존하지 않고, 프론트는 `serverNow`로 카운트다운만 그린다. 버튼 비활성화만으로는 API 직접 호출을 막을 수 없으므로 `join`도 같은 규칙으로 서버에서 거절한다.
+- `join` 거절: 입장 시간 전 → 403 `NOT_OPEN_YET`(`enterOpensAt` 포함), 응원 신청을 하지 않은 경기 → 403 `NOT_CHEERED`, 종료된 경기 → 409 `MATCH_FINISHED`. 이미 멤버면 그대로 성공한다(멱등).
+- 커뮤니티는 경기당 1개이며, 필요할 때 처음 만든다(동시 요청이어도 중복 생성되지 않는다).
+- `UserSetting.autoJoinCommunity`(경기 당일 자동 입장)는 이번 범위에서 연결하지 않는다.
+
+**GET /communities/mine 응답 예시** (로그인 필요)
+
+```json
+{
+  "serverNow": "2026-11-14T15:30:00+09:00",
+  "count": 3,
+  "days": [
+    { "date": "2026-11-14",
+      "items": [
+        { "match": { "id": "...", "homeTeam": {...}, "awayTeam": {...}, "kickoffAt": "...", "status": "SCHEDULED" },
+          "cheeredTeamId": "...",
+          "community": { "id": "...", "memberCount": 3, "joined": false },
+          "enterOpensAt": "2026-11-14T17:00:00+09:00",
+          "canEnter": false } ] },
+    { "date": "2026-11-19", "items": [ ... ] }
+  ]
+}
+```
+
+- 응원 신청한 경기 중 **종료되지 않은 것만** 담는다(종료된 경기는 `/me/records`). `days`는 날짜 오름차순이고 같은 날 안에서는 킥오프 순이다. 날짜는 KST 기준으로 묶는다(`/matches?month=`와 같다).
+- 신청 내역이 없으면 `days: []`, `count: 0`(200)이다. 프론트는 이때 "신청한 경기가 없어요"를 보여주고 캘린더로 보낸다.
+- 프론트는 날짜별 목록을 보여주고, 입장 초대장을 하나씩 보여주며, `canEnter=false`인 초대장은 입장 버튼을 비활성화한다.
+- (JSON 필드는 구현에서 snake_case다: `server_now`, `enter_opens_at`, `can_enter` 등)
 
 ### 4.5 랭킹 (폴링)
 
@@ -391,6 +425,7 @@ Fortune {
 | 캘린더 | GET /matches?month |
 | 팀 응원 설정 | GET /matches/{id}, POST /matches/{id}/cheer |
 | 초대장 → 커뮤니티 입장 | GET /matches/{id}/community, POST /communities/{id}/join |
+| 커뮤니티 홈 (내 경기 목록·초대장) | GET /communities/mine |
 | 커뮤니티 홈 (랭킹) | GET /communities/today, /rankings/victory, /rankings/defeat |
 | 데시벨 측정/대결방 | POST /communities/{id}/battles, GET /battles/{id} (폴링), POST /battles/{id}/records |
 | 대결 종료/보상 | GET /battles/{id}/result |
@@ -416,7 +451,7 @@ Fortune {
 ## 7. 데모 시나리오 (심사용 3분)
 
 1. 캘린더에서 오늘 경기(두산 vs LG) 선택 → LG 응원 설정
-2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정
+2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정 (입장은 경기 시작 1시간 전부터라, 시연 경기는 킥오프가 1시간 이내여야 한다)
 3. TOP3 + 포인트 지급 화면
 4. `admin/finish`로 경기 종료 발동 → 승리 결과·포인트·요정 갱신
 5. 마이페이지에서 승률·요정·배지 확인 → SNS 공유 카드로 마무리
