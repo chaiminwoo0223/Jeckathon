@@ -153,6 +153,13 @@ class TeamBase(SQLModel):
     full_name: str = Field(max_length=255)  # "LG 트윈스"
     logo_url: str = Field(default="", max_length=500)
     league: str = Field(max_length=100)  # "KBO리그"
+    # 화면 TeamLogo가 로고 대신 그리는 약어·팀 컬러
+    short_name: str = Field(
+        default="", max_length=10, sa_column_kwargs={"server_default": ""}
+    )  # "LG"
+    color: str = Field(
+        default="", max_length=20, sa_column_kwargs={"server_default": ""}
+    )  # "#C30452"
 
 
 class Team(TeamBase, table=True):
@@ -178,6 +185,12 @@ class MatchBase(SQLModel):
         default=None,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    venue: str = Field(
+        default="", max_length=50, sa_column_kwargs={"server_default": ""}
+    )  # "잠실"
+    round_label: str = Field(
+        default="", max_length=50, sa_column_kwargs={"server_default": ""}
+    )  # 포스트시즌만: "KS 5차전"
 
 
 class Match(MatchBase, table=True):
