@@ -72,12 +72,12 @@ function CheerLayout() {
           {isDark ? "라이트 모드" : "다크 모드"}
         </button>
 
-        <button
-          type="button"
+        <Link
+          to="/cheer/login"
           className="mt-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-[var(--c-muted)] hover:bg-[var(--c-surface-2)]"
         >
           <LogOut size={16} /> 로그아웃
-        </button>
+        </Link>
       </aside>
 
       {/* Content */}

@@ -24,6 +24,8 @@ import { Route as CheerCalendarRouteImport } from './routes/cheer/calendar'
 import { Route as CheerCommunityRouteImport } from './routes/cheer/community'
 import { Route as CheerMypageRouteImport } from './routes/cheer/mypage'
 import { Route as CheerSettingsRouteImport } from './routes/cheer/settings'
+import { Route as CheerLoginRouteImport } from './routes/cheer_.login'
+import { Route as CheerSignupRouteImport } from './routes/cheer_.signup'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -99,6 +101,16 @@ const CheerSettingsRoute = CheerSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => CheerRoute,
 } as any)
+const CheerLoginRoute = CheerLoginRouteImport.update({
+  id: '/cheer_/login',
+  path: '/cheer/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheerSignupRoute = CheerSignupRouteImport.update({
+  id: '/cheer_/signup',
+  path: '/cheer/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -114,6 +126,8 @@ export interface FileRoutesByFullPath {
   '/cheer/community': typeof CheerCommunityRoute
   '/cheer/mypage': typeof CheerMypageRoute
   '/cheer/settings': typeof CheerSettingsRoute
+  '/cheer/login': typeof CheerLoginRoute
+  '/cheer/signup': typeof CheerSignupRoute
   '/cheer/': typeof CheerIndexRoute
 }
 export interface FileRoutesByTo {
@@ -128,6 +142,8 @@ export interface FileRoutesByTo {
   '/cheer/community': typeof CheerCommunityRoute
   '/cheer/mypage': typeof CheerMypageRoute
   '/cheer/settings': typeof CheerSettingsRoute
+  '/cheer/login': typeof CheerLoginRoute
+  '/cheer/signup': typeof CheerSignupRoute
   '/': typeof LayoutIndexRoute
   '/cheer': typeof CheerIndexRoute
 }
@@ -146,6 +162,8 @@ export interface FileRoutesById {
   '/cheer/community': typeof CheerCommunityRoute
   '/cheer/mypage': typeof CheerMypageRoute
   '/cheer/settings': typeof CheerSettingsRoute
+  '/cheer_/login': typeof CheerLoginRoute
+  '/cheer_/signup': typeof CheerSignupRoute
   '/_layout/': typeof LayoutIndexRoute
   '/cheer/': typeof CheerIndexRoute
 }
@@ -165,6 +183,8 @@ export interface FileRouteTypes {
     | '/cheer/community'
     | '/cheer/mypage'
     | '/cheer/settings'
+    | '/cheer/login'
+    | '/cheer/signup'
     | '/cheer/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -179,6 +199,8 @@ export interface FileRouteTypes {
     | '/cheer/community'
     | '/cheer/mypage'
     | '/cheer/settings'
+    | '/cheer/login'
+    | '/cheer/signup'
     | '/'
     | '/cheer'
   id:
@@ -196,6 +218,8 @@ export interface FileRouteTypes {
     | '/cheer/community'
     | '/cheer/mypage'
     | '/cheer/settings'
+    | '/cheer_/login'
+    | '/cheer_/signup'
     | '/_layout/'
     | '/cheer/'
   fileRoutesById: FileRoutesById
@@ -207,6 +231,8 @@ export interface RootRouteChildren {
   RecoverPasswordRoute: typeof RecoverPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  CheerLoginRoute: typeof CheerLoginRoute
+  CheerSignupRoute: typeof CheerSignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -316,6 +342,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheerSettingsRouteImport
       parentRoute: typeof CheerRoute
     }
+    '/cheer_/login': {
+      id: '/cheer_/login'
+      path: '/cheer/login'
+      fullPath: '/cheer/login'
+      preLoaderRoute: typeof CheerLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cheer_/signup': {
+      id: '/cheer_/signup'
+      path: '/cheer/signup'
+      fullPath: '/cheer/signup'
+      preLoaderRoute: typeof CheerSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -361,6 +401,8 @@ const rootRouteChildren: RootRouteChildren = {
   RecoverPasswordRoute: RecoverPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  CheerLoginRoute: CheerLoginRoute,
+  CheerSignupRoute: CheerSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
