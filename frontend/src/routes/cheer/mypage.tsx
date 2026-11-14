@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, Check, Download, Pencil, Share2, X } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -12,16 +12,17 @@ import {
   TeamLogo,
 } from "@/cheer/components/primitives"
 import {
-  ME,
-  type PublicProfile,
+  formatKDate,
   getProfile,
+  loseRate,
+  ME,
   ME_PROFILE,
+  type PublicProfile,
   pct,
   resultMeta,
-  formatKDate,
-  loseRate,
   winRate,
 } from "@/cheer/data/mock"
+import { useMe } from "@/cheer/hooks/use-me"
 import { downloadShareCard } from "@/cheer/lib/share-image"
 import useAuth from "@/hooks/useAuth"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
@@ -55,8 +56,9 @@ function MyPage() {
   const [, copy] = useCopyToClipboard()
 
   // 본인 이름은 실제 로그인 사용자 기준, 없으면 목업 닉네임
+  const { data: me } = useMe()
   const authName =
-    user?.full_name || user?.email?.split("@")[0] || ME_PROFILE.nickname
+    me?.nickname || user?.email?.split("@")[0] || ME_PROFILE.nickname
   // 본인 프로필 닉네임 인라인 편집 (목업: 편집 전까지 로그인 이름을 따라감)
   const [editedNick, setEditedNick] = useState<string | null>(null)
   const ownerName = editedNick ?? authName
@@ -276,17 +278,23 @@ function MyPage() {
               return (
                 <li key={r.id} className="flex items-center gap-3 py-3">
                   <div className="w-20 shrink-0 text-xs">
-                    <p className="font-bold">{formatKDate(r.match.kickoffAt)}</p>
+                    <p className="font-bold">
+                      {formatKDate(r.match.kickoffAt)}
+                    </p>
                     <p className="text-[var(--c-muted)]">{r.match.league}</p>
                   </div>
                   <div className="flex flex-1 items-center justify-center gap-2">
-                    <span className="text-sm font-bold">{r.match.home.name}</span>
+                    <span className="text-sm font-bold">
+                      {r.match.home.name}
+                    </span>
                     <TeamLogo team={r.match.home} size={24} />
                     <span className="min-w-12 text-center text-sm font-black">
                       {r.match.homeScore} : {r.match.awayScore}
                     </span>
                     <TeamLogo team={r.match.away} size={24} />
-                    <span className="text-sm font-bold">{r.match.away.name}</span>
+                    <span className="text-sm font-bold">
+                      {r.match.away.name}
+                    </span>
                   </div>
                   <Pill color={rm.color} bg={rm.bg}>
                     {rm.label}
@@ -305,9 +313,21 @@ function MyPage() {
           <div className="flex items-center gap-5">
             <Donut winRate={seasonWinRate} />
             <ul className="space-y-2 text-sm font-bold">
-              <StatRow color="var(--c-win)" label="승리" value={`${profile.stats.win}경기`} />
-              <StatRow color="var(--c-lose)" label="패배" value={`${profile.stats.lose}경기`} />
-              <StatRow color="var(--c-draw)" label="무승부" value={`${profile.stats.draw}경기`} />
+              <StatRow
+                color="var(--c-win)"
+                label="승리"
+                value={`${profile.stats.win}경기`}
+              />
+              <StatRow
+                color="var(--c-lose)"
+                label="패배"
+                value={`${profile.stats.lose}경기`}
+              />
+              <StatRow
+                color="var(--c-draw)"
+                label="무승부"
+                value={`${profile.stats.draw}경기`}
+              />
             </ul>
           </div>
         </SectionCard>
@@ -332,15 +352,21 @@ function MyPage() {
                 key={b.code}
                 className="flex flex-col items-center gap-1 rounded-2xl p-3 text-center transition-all"
                 style={{
-                  background: b.acquired ? "var(--c-primary-50)" : "var(--c-surface-2)",
+                  background: b.acquired
+                    ? "var(--c-primary-50)"
+                    : "var(--c-surface-2)",
                   opacity: b.acquired ? 1 : 0.5,
                   filter: b.acquired ? "none" : "grayscale(1)",
                 }}
                 title={b.desc}
               >
                 <span className="text-3xl">{b.emoji}</span>
-                <span className="text-xs font-extrabold leading-tight">{b.name}</span>
-                <span className="text-[10px] text-[var(--c-muted)]">{b.desc}</span>
+                <span className="text-xs font-extrabold leading-tight">
+                  {b.name}
+                </span>
+                <span className="text-[10px] text-[var(--c-muted)]">
+                  {b.desc}
+                </span>
               </div>
             ))}
           </div>
@@ -387,7 +413,9 @@ function FairyCard({
       className="relative overflow-hidden rounded-[22px] p-5 text-white shadow-[var(--shadow-card)]"
       style={{ background: grad }}
     >
-      <div className="pointer-events-none absolute -right-3 -top-3 text-7xl opacity-20">{emoji}</div>
+      <div className="pointer-events-none absolute -right-3 -top-3 text-7xl opacity-20">
+        {emoji}
+      </div>
       <div className="relative z-10">
         <p className="flex items-center gap-1.5 text-sm font-extrabold">
           {emoji} {title}
@@ -400,7 +428,15 @@ function FairyCard({
   )
 }
 
-function StatRow({ color, label, value }: { color: string; label: string; value: string }) {
+function StatRow({
+  color,
+  label,
+  value,
+}: {
+  color: string
+  label: string
+  value: string
+}) {
   return (
     <li className="flex items-center gap-2">
       <span className="size-2.5 rounded-full" style={{ background: color }} />
@@ -424,7 +460,14 @@ function Donut({ winRate }: { winRate: number }) {
         aria-label={`승률 ${pct(winRate)}`}
       >
         <title>시즌 승률 도넛</title>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-lose-soft)" strokeWidth={16} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--c-lose-soft)"
+          strokeWidth={16}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -439,7 +482,9 @@ function Donut({ winRate }: { winRate: number }) {
       </svg>
       <div className="absolute inset-0 grid place-content-center text-center">
         <p className="text-xs font-bold text-[var(--c-muted)]">승률</p>
-        <p className="text-2xl font-black text-[var(--c-primary)]">{pct(winRate)}</p>
+        <p className="text-2xl font-black text-[var(--c-primary)]">
+          {pct(winRate)}
+        </p>
       </div>
     </div>
   )
@@ -490,7 +535,9 @@ function ShareCard({
           {isOwner ? "나의 응원 기록" : `${nickname}님의 응원 기록`}
         </p>
         <p className="mt-2 text-sm">
-          <span className="cheer-shine text-2xl font-black">승률 {pct(winRate)}</span>
+          <span className="cheer-shine text-2xl font-black">
+            승률 {pct(winRate)}
+          </span>
         </p>
         <p className="text-xs text-white/70">{profile.stats.total}경기 응원</p>
         <div className="my-3">
@@ -500,7 +547,8 @@ function ShareCard({
           {winRate >= 0.6 ? "👑" : "🔥"} {fairyTitle} {nickname}
         </p>
         <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/18 px-3 py-1 text-xs font-bold">
-          <TeamLogo team={profile.favoriteTeam} size={16} /> 최애팀 {profile.favoriteTeam.name}
+          <TeamLogo team={profile.favoriteTeam} size={16} /> 최애팀{" "}
+          {profile.favoriteTeam.name}
         </span>
       </div>
       <button

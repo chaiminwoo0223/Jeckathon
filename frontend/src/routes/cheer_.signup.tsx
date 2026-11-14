@@ -7,9 +7,9 @@ import {
 } from "@tanstack/react-router"
 import { type FormEvent, useState } from "react"
 import { toast } from "sonner"
-import { UsersService } from "@/client"
 import { AuthField } from "@/cheer/components/auth-field"
 import { SocialButtons } from "@/cheer/components/social-buttons"
+import { LoginService, MeService, UsersService } from "@/client"
 import { isLoggedIn } from "@/hooks/useAuth"
 import { handleError } from "@/utils"
 import { AuthShell, Divider } from "./cheer_.login"
@@ -31,13 +31,26 @@ function SignupPage() {
   const [pw2, setPw2] = useState("")
 
   const signUpMutation = useMutation({
-    mutationFn: () =>
-      UsersService.registerUser({
-        body: { email: email.trim(), password: pw, full_name: nickname.trim() },
-      }),
+    // User 에 full_name 이 없어져(#11) 닉네임은 가입 뒤 로그인해서 프로필로 저장한다
+    mutationFn: async () => {
+      await UsersService.registerUser({
+        body: { email: email.trim(), password: pw },
+      })
+      const token = (
+        await LoginService.loginAccessToken({
+          body: { username: email.trim(), password: pw },
+        })
+      ).data
+      localStorage.setItem("access_token", token.access_token)
+      if (nickname.trim()) {
+        await MeService.updateProfile({
+          body: { nickname: nickname.trim() },
+        }).catch(() => undefined)
+      }
+    },
     onSuccess: () => {
-      toast.success("회원가입 완료! 로그인해주세요 🎉")
-      navigate({ to: "/cheer/login" })
+      toast.success("회원가입 완료! 응원단에 오신 걸 환영해요")
+      navigate({ to: "/cheer" })
     },
     onError: handleError.bind(toast.error),
   })
@@ -60,12 +73,41 @@ function SignupPage() {
   }
 
   return (
-    <AuthShell title="응원단에 합류해요!" subtitle="회원가입하고 나만의 응원 기록을 시작하세요">
+    <AuthShell
+      title="응원단에 합류해요!"
+      subtitle="회원가입하고 나만의 응원 기록을 시작하세요"
+    >
       <form onSubmit={submit} className="space-y-3">
-        <AuthField label="닉네임" value={nickname} onChange={setNickname} placeholder="응원단에서 사용할 닉네임" />
-        <AuthField label="이메일" type="email" value={email} onChange={setEmail} placeholder="이메일을 입력하세요" autoComplete="email" />
-        <AuthField label="비밀번호" type="password" value={pw} onChange={setPw} placeholder="비밀번호를 입력하세요 (8자 이상)" autoComplete="new-password" />
-        <AuthField label="비밀번호 확인" type="password" value={pw2} onChange={setPw2} placeholder="비밀번호를 다시 입력하세요" autoComplete="new-password" />
+        <AuthField
+          label="닉네임"
+          value={nickname}
+          onChange={setNickname}
+          placeholder="응원단에서 사용할 닉네임"
+        />
+        <AuthField
+          label="이메일"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          placeholder="이메일을 입력하세요"
+          autoComplete="email"
+        />
+        <AuthField
+          label="비밀번호"
+          type="password"
+          value={pw}
+          onChange={setPw}
+          placeholder="비밀번호를 입력하세요 (8자 이상)"
+          autoComplete="new-password"
+        />
+        <AuthField
+          label="비밀번호 확인"
+          type="password"
+          value={pw2}
+          onChange={setPw2}
+          placeholder="비밀번호를 다시 입력하세요"
+          autoComplete="new-password"
+        />
         <button
           type="submit"
           disabled={signUpMutation.isPending}
@@ -80,7 +122,10 @@ function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-[var(--c-ink-soft)]">
         이미 계정이 있으신가요?{" "}
-        <Link to="/cheer/login" className="font-extrabold text-[var(--c-primary)]">
+        <Link
+          to="/cheer/login"
+          className="font-extrabold text-[var(--c-primary)]"
+        >
           로그인
         </Link>
       </p>
