@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 import redis.asyncio as redis
@@ -23,6 +24,8 @@ from app.core.config import settings
 W, H = 20, 12
 SEEN_TTL = 60  # 초. 클라이언트는 25초마다 ping을 보낸다
 KEY_TTL = 86400  # 아무도 안 오는 방의 키는 하루 뒤 사라진다
+CHAT_KEEP = 50  # 방마다 최근 채팅만 Redis LIST(space:{cid}:chat)에 둔다
+CHAT_TEXT_MAX = 500
 QUEUE_MAX = 256
 TICK = 0.1  # 초. move를 모아 보내는 간격(연결당 최대 10프레임/s)
 
@@ -180,6 +183,27 @@ class Hub:
                 _dumps({"type": "emote", "user_id": uid, "emote": emote}),
             )
             await p.execute()
+
+    async def chat(self, cid: str, user: dict[str, Any], text: str) -> None:
+        msg = {
+            "type": "chat",
+            "user_id": user["user_id"],
+            "name": user["name"],
+            "text": text,
+            "sent_at": datetime.now(UTC).isoformat(),
+        }
+        data = _dumps(msg)
+        # 기록과 발행을 한 트랜잭션으로: Redis가 워커 사이 순서를 하나로 정하고, 기록도 그 순서다
+        async with self.r.pipeline(transaction=True) as p:
+            p.rpush(_key(cid, "chat"), data)
+            p.ltrim(_key(cid, "chat"), -CHAT_KEEP, -1)
+            p.expire(_key(cid, "chat"), KEY_TTL)
+            p.zadd(_key(cid, "seen"), {user["user_id"]: time.time()})
+            p.publish(f"space:{cid}", data)
+            await p.execute()
+
+    async def chat_history(self, cid: str) -> list[dict[str, Any]]:
+        return [json.loads(m) for m in await self.r.lrange(_key(cid, "chat"), 0, -1)]
 
     async def touch(self, cid: str, uid: str) -> None:
         await self.r.zadd(_key(cid, "seen"), {uid: time.time()})

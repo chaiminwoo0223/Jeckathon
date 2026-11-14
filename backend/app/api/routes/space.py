@@ -11,7 +11,7 @@ from sqlmodel import Session
 from app.api.deps import get_current_user
 from app.core.db import engine
 from app.models import CommunityMember
-from app.services.space import H, W, hub
+from app.services.space import CHAT_TEXT_MAX, H, W, hub
 
 router = APIRouter(prefix="/communities", tags=["space"])
 
@@ -61,6 +61,7 @@ async def space_ws(websocket: WebSocket, community_id: uuid.UUID, token: str) ->
                 "me": uid,
                 "room": {"id": cid, "w": W, "h": H},
                 "users": await hub.snapshot(cid),
+                "chat": await hub.chat_history(cid),
             }
         )
         sender = asyncio.create_task(_drain(websocket, q))
@@ -83,6 +84,10 @@ async def space_ws(websocket: WebSocket, community_id: uuid.UUID, token: str) ->
                         continue
                     last_emote = now
                     await hub.emote(cid, uid, msg["emote"])
+                elif kind == "chat":
+                    text = str(msg["text"]).strip()[:CHAT_TEXT_MAX]
+                    if text:
+                        await hub.chat(cid, me, text)
                 elif kind == "ping":
                     await hub.touch(cid, uid)
                     q.put_nowait('{"type":"pong"}')
