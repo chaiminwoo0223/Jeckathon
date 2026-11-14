@@ -303,6 +303,8 @@ Fortune {
 - `POST /matches/{id}/cheer`: `cheeredTeamId`는 그 경기의 홈팀 또는 원정팀이어야 한다(아니면 400). 종료(FINISHED)된 경기는 409다. 이미 정산으로 확정된 기록도 수정할 수 없다(409). 같은 경기에 다시 보내면 새 기록이 아니라 응원팀만 바뀐다.
 - `GET /me/records?page=&size=`: 1부터 시작하는 `page`, 기본 `size` 20(최대 100). 최근 경기 순이고 각 항목에 `match`(팀 정보 포함)가 들어 있다. 응답은 `{data, count, page, size}`이고 `count`는 전체 기록 수다.
 
+- `GET /me/share-card`: 닉네임·프로필 이미지, 요정(`fairy_type`·`fairy_label`), `stats`(`total`이 경기수, `/me`와 같은 규칙), `favorite_team`을 돌려준다(로그인 필요). **최애팀**은 응원 기록(진행 전 포함)에서 가장 많이 응원한 팀이고, 같은 횟수면 가장 최근에 응원한 팀이다. 응원 기록이 없으면 응원팀 설정(`/me/teams`)의 첫 팀, 그것도 없으면 `null`이다. 카드 이미지는 프론트가 그린다.
+
 **경기 종료 처리 (내부 배치/관리자 트리거)**
 
 - `PATCH /admin/matches/{id}/finish` `{homeScore, awayScore}` 호출 시:

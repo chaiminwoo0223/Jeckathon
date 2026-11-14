@@ -4,7 +4,14 @@ import uuid
 
 from sqlmodel import Session, col, func, select
 
-from app.models import CheerRecord, CheerResult, FairyType, StatsPublic
+from app.models import (
+    CheerRecord,
+    CheerResult,
+    FairyType,
+    StatsPublic,
+    Team,
+    UserTeam,
+)
 
 VICTORY_WIN_RATE = 0.6  # 승률 이 값 이상이면 승리요정
 DEFEAT_LOSE_RATE = 0.3  # 패배율 이 값 이상이면 패배요정 (승리요정이 우선)
@@ -64,3 +71,26 @@ def user_stats(session: Session, user_id: uuid.UUID) -> StatsPublic:
         draw=counts.get(CheerResult.DRAW, 0),
         lose=counts.get(CheerResult.LOSE, 0),
     )
+
+
+def favorite_team(session: Session, user_id: uuid.UUID) -> Team | None:
+    """최애팀: 가장 많이 응원한 팀(진행 전 기록 포함), 같으면 가장 최근에 응원한 팀.
+
+    응원 기록이 없으면 응원팀 설정(UserTeam)에서 이름순 첫 팀, 그것도 없으면 None.
+    """
+    top = session.exec(
+        select(CheerRecord.cheered_team_id)
+        .where(CheerRecord.user_id == user_id)
+        .group_by(col(CheerRecord.cheered_team_id))
+        .order_by(func.count().desc(), func.max(CheerRecord.created_at).desc())
+        .limit(1)
+    ).first()
+    if top is not None:
+        return session.get(Team, top)
+    return session.exec(
+        select(Team)
+        .join(UserTeam, col(UserTeam.team_id) == col(Team.id))
+        .where(UserTeam.user_id == user_id)
+        .order_by(col(Team.name))
+        .limit(1)
+    ).first()

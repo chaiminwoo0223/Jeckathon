@@ -554,3 +554,14 @@ class MatchFinishOut(SQLModel):
     win: int
     draw: int
     lose: int
+
+
+class ShareCard(SQLModel):
+    """SNS 공유 카드에 그리는 값. 이미지는 프론트가 만든다."""
+
+    nickname: str
+    profile_image_url: str | None
+    fairy_type: FairyType
+    fairy_label: str
+    stats: StatsPublic  # total이 경기수
+    favorite_team: TeamPublic | None
