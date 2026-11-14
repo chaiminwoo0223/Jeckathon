@@ -98,7 +98,8 @@ export function Ticket({
           </div>
 
           <p className="mt-3 text-center text-xs font-bold text-[var(--c-ink-soft)]">
-            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} 킥오프
+            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} 경기
+            시작{applied.venue && ` · ${applied.venue}`}
           </p>
 
           {/* 좌석 메타 */}

@@ -31,7 +31,6 @@ import {
   FORTUNES,
   formatKDate,
   formatTime,
-  invitationState,
   type Match,
   pct,
   TEAMS,
@@ -39,7 +38,10 @@ import {
   TODAY_MATCH,
   VICTORY_RANKING,
 } from "@/cheer/data/mock"
-import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
+import {
+  entryState,
+  useAppliedMatches,
+} from "@/cheer/hooks/use-applied-matches"
 import { useCountUp } from "@/cheer/hooks/use-count-up"
 import { useDecibel } from "@/cheer/hooks/use-decibel"
 import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
@@ -147,7 +149,7 @@ function CommunityPage() {
 
 /* ---------------- Invite (입장 초대장) ---------------- */
 function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
-  const applied = useAppliedMatches()
+  const { data: applied, isLoading, isError, refetch } = useAppliedMatches()
   const [now, setNow] = useState(() => new Date())
 
   // 1분 경계(입장 활성화)를 놓치지 않도록 30초마다 재평가
@@ -158,14 +160,37 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
 
   const items = useMemo(
     () =>
-      applied.map((am) => ({
+      (applied ?? []).map((am) => ({
         am,
-        state: invitationState(am.match.kickoffAt, now),
+        state: entryState(am, now),
       })),
     [applied, now],
   )
   const open = items.filter((i) => i.state.canEnter)
   const upcoming = items.filter((i) => !i.state.canEnter)
+
+  if (isLoading)
+    return (
+      <p className="py-20 text-center text-sm font-bold text-[var(--c-muted)]">
+        관람 신청 내역을 불러오는 중…
+      </p>
+    )
+
+  if (isError)
+    return (
+      <div className="cheer-reveal grid min-h-[50vh] place-content-center gap-3 text-center">
+        <p className="text-sm font-bold text-[var(--c-ink-soft)]">
+          관람 신청 내역을 불러오지 못했어요
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mx-auto rounded-full bg-[var(--c-primary)] px-5 py-2 text-sm font-extrabold text-white"
+        >
+          다시 시도
+        </button>
+      </div>
+    )
 
   // 신청 내역 없음 → 캘린더로 안내
   if (items.length === 0) {
