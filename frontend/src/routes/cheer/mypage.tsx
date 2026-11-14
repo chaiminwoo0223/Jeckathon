@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { Pencil, Share2 } from "lucide-react"
+import { Download, Pencil, Share2 } from "lucide-react"
+import { useState } from "react"
 import { toast } from "sonner"
+import { AllMatchesDialog } from "@/cheer/components/all-matches-dialog"
 import { Mascot } from "@/cheer/components/mascot"
 import {
   Pill,
@@ -20,12 +22,16 @@ import {
   SEASON_WINRATE,
   formatKDate,
 } from "@/cheer/data/mock"
+import { downloadShareCard } from "@/cheer/lib/share-image"
+
+const RECENT_COUNT = 4
 
 export const Route = createFileRoute("/cheer/mypage")({
   component: MyPage,
 })
 
 function MyPage() {
+  const [allMatchesOpen, setAllMatchesOpen] = useState(false)
   return (
     <div className="cheer-reveal space-y-6">
       <div className="flex items-center justify-between">
@@ -109,11 +115,22 @@ function MyPage() {
       {/* records + donut */}
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <SectionCard>
-          <SectionTitle icon="⚽" right={<button type="button" className="text-xs font-bold text-[var(--c-primary)]">전체 보기 →</button>}>
+          <SectionTitle
+            icon="⚽"
+            right={
+              <button
+                type="button"
+                onClick={() => setAllMatchesOpen(true)}
+                className="text-xs font-bold text-[var(--c-primary)] transition-opacity hover:opacity-70"
+              >
+                전체 보기 →
+              </button>
+            }
+          >
             최근 응원한 경기
           </SectionTitle>
           <ul className="divide-y" style={{ borderColor: "var(--c-line)" }}>
-            {MY_RECORDS.map((r) => {
+            {MY_RECORDS.slice(0, RECENT_COUNT).map((r) => {
               const rm = resultMeta(r.result)
               return (
                 <li key={r.id} className="flex items-center gap-3 py-3">
@@ -177,6 +194,12 @@ function MyPage() {
 
         <ShareCard />
       </div>
+
+      <AllMatchesDialog
+        open={allMatchesOpen}
+        onOpenChange={setAllMatchesOpen}
+        records={MY_RECORDS}
+      />
     </div>
   )
 }
@@ -253,6 +276,32 @@ function Donut({ winRate }: { winRate: number }) {
 }
 
 function ShareCard() {
+  const [saving, setSaving] = useState(false)
+
+  async function handleShare() {
+    if (saving) return
+    setSaving(true)
+    try {
+      await downloadShareCard({
+        nickname: ME.nickname,
+        fairyTitle: "승리요정",
+        winRateText: pct(SEASON_WINRATE),
+        totalMatches: SEASON_STATS.total,
+        favoriteTeam: ME.favoriteTeam.name,
+        stats: {
+          win: SEASON_STATS.win,
+          draw: SEASON_STATS.draw,
+          lose: SEASON_STATS.lose,
+        },
+      })
+      toast.success("SNS 공유 카드를 저장했어요 📸")
+    } catch {
+      toast.error("이미지를 만들지 못했어요. 다시 시도해 주세요")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="relative overflow-hidden rounded-[22px] cheer-hero p-6 text-center text-white shadow-[var(--shadow-card)]">
@@ -269,10 +318,19 @@ function ShareCard() {
       </div>
       <button
         type="button"
-        onClick={() => toast.success("SNS 공유 카드를 저장했어요 📸")}
-        className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--c-primary)] py-3 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)]"
+        onClick={handleShare}
+        disabled={saving}
+        className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--c-primary)] py-3 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <Share2 size={16} /> SNS에 공유하기
+        {saving ? (
+          <>
+            <Download size={16} className="animate-bounce" /> 카드 만드는 중…
+          </>
+        ) : (
+          <>
+            <Share2 size={16} /> SNS 공유 카드 다운로드
+          </>
+        )}
       </button>
     </div>
   )
