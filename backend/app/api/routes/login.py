@@ -1,15 +1,30 @@
 from datetime import timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
+from app.api.routes.me import to_profile
 from app.core import security
 from app.core.config import settings
-from app.models import Message, NewPassword, Token, UserPublic, UserUpdate
+from app.models import (
+    USERNAME_PATTERN,
+    AuthCredentials,
+    AuthResponse,
+    Message,
+    NewPassword,
+    Token,
+    User,
+    UsernameCheck,
+    UserPublic,
+    UserUpdate,
+    login_id_to_email,
+)
 from app.utils import (
     generate_password_reset_token,
     generate_reset_password_email,
@@ -27,9 +42,10 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = crud.authenticate(
-        session=session, email=form_data.username, password=form_data.password
-    )
+    # 아이디(@ 없음)도 받는다: 프론트 로그인 폼·Swagger Authorize가 이 경로를 쓴다
+    login = form_data.username
+    email = login if "@" in login else login_id_to_email(login)
+    user = crud.authenticate(session=session, email=email, password=form_data.password)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
@@ -40,6 +56,74 @@ def login_access_token(
             user.id, expires_delta=access_token_expires
         )
     )
+
+
+def _issue_token(user: User) -> AuthResponse:
+    token = security.create_access_token(
+        user.id, expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return AuthResponse(access_token=token, user=to_profile(user))
+
+
+@router.get("/auth/check-username", response_model=UsernameCheck)
+def check_username(
+    session: SessionDep, username: Annotated[str, Query(pattern=USERNAME_PATTERN)]
+) -> UsernameCheck:
+    """
+    아이디 중복 체크. 대소문자는 구분하지 않는다.
+    """
+    taken = session.exec(
+        select(User.id).where(User.email == login_id_to_email(username))
+    ).first()
+    return UsernameCheck(username=username.lower(), available=taken is None)
+
+
+@router.post("/auth/signup", response_model=AuthResponse)
+def signup(session: SessionDep, body: AuthCredentials) -> AuthResponse:
+    """
+    아이디·비밀번호 가입. 가입 직후 로그인된 상태로 토큰을 돌려준다. 아이디가 이미 있으면 409.
+    """
+    username = body.username.lower()
+    if session.exec(
+        select(User.id).where(User.email == login_id_to_email(username))
+    ).first():
+        raise HTTPException(status_code=409, detail="Username already taken")
+    user = User(
+        nickname=username,
+        email=login_id_to_email(username),
+        hashed_password=security.get_password_hash(body.password),
+    )
+    session.add(user)
+    try:
+        session.commit()
+    except IntegrityError:  # 동시에 같은 아이디로 가입한 경우
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Username already taken")
+    session.refresh(user)
+    return _issue_token(user)
+
+
+@router.post("/auth/login", response_model=AuthResponse)
+def login(session: SessionDep, body: AuthCredentials) -> AuthResponse:
+    """
+    아이디·비밀번호 로그인.
+    """
+    user = session.exec(
+        select(User).where(User.email == login_id_to_email(body.username))
+    ).first()
+    # 아이디가 없어도 해시 검증을 돌려 응답 시간 차이로 아이디 존재를 알아내지 못하게 한다.
+    hashed = user.hashed_password if user else crud.DUMMY_HASH
+    verified, new_hash = security.verify_password(body.password, hashed)
+    if not user or not verified:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    if new_hash:
+        user.hashed_password = new_hash
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    return _issue_token(user)
 
 
 @router.post("/login/test-token", response_model=UserPublic)
