@@ -343,7 +343,12 @@ function Room({
         <SectionTitle icon="📺">경기 생중계</SectionTitle>
         <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
           <VideoStream home={match.home} away={match.away} />
-          <LiveChat fill communityId={communityId} />
+          {/* 채팅 높이는 생중계 높이에 고정: 행 높이 계산에서 빼고(absolute) 영상 높이만큼 채운 뒤 안에서 스크롤 */}
+          <div className="relative h-[360px] lg:h-auto">
+            <div className="h-full lg:absolute lg:inset-0">
+              <LiveChat fill communityId={communityId} />
+            </div>
+          </div>
         </div>
       </div>
 

@@ -146,7 +146,7 @@ export function LiveChat({
 
   return (
     <SectionCard
-      className={`flex flex-col ${fill ? "h-full min-h-[360px]" : ""}`}
+      className={`flex flex-col ${fill ? "h-full" : ""}`}
       pad={false}
     >
       <div
