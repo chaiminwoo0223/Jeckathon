@@ -394,3 +394,128 @@ export function formatTime(iso: string): string {
 
 export const SEASON_WINRATE = winRate(SEASON_STATS.win, SEASON_STATS.lose) // 0.68
 export const SEASON_LOSERATE = loseRate(SEASON_STATS.win, SEASON_STATS.lose) // 0.32
+
+// ============================================================
+// 공개 프로필 (프로필 URL 공유 → 서로의 프로필 열람)
+// ============================================================
+
+export interface PublicProfile {
+  id: number
+  nickname: string
+  bio: string
+  level: number
+  levelTitle: string
+  totalPoints: number
+  teams: Team[]
+  favoriteTeam: Team
+  style: { label: string; value: number; emoji: string }[]
+  stats: { total: number; win: number; draw: number; lose: number }
+  records: CheerRecord[]
+  badges: Badge[]
+}
+
+// 코드 목록으로 배지 획득 여부를 입힌다 (공통 BADGES 메타 재사용)
+function badgesWith(codes: string[]): Badge[] {
+  return BADGES.map((b) => ({ ...b, acquired: codes.includes(b.code) }))
+}
+
+// 간단한 경기 기록 팩토리 (타 유저 샘플용)
+let _recId = 2000
+function rec(
+  home: Team,
+  away: Team,
+  homeScore: number,
+  awayScore: number,
+  cheered: Team,
+  kickoffAt: string,
+): CheerRecord {
+  const cheeredScore = cheered.id === home.id ? homeScore : awayScore
+  const otherScore = cheered.id === home.id ? awayScore : homeScore
+  const result: MatchResult =
+    cheeredScore > otherScore ? "WIN" : cheeredScore < otherScore ? "LOSE" : "DRAW"
+  const pointsEarned = result === "WIN" ? 100 : result === "DRAW" ? 50 : 30
+  _recId += 1
+  return {
+    id: _recId,
+    match: {
+      id: _recId + 7000,
+      home,
+      away,
+      league: home.league,
+      kickoffAt,
+      status: "FINISHED",
+      homeScore,
+      awayScore,
+    },
+    cheeredTeamId: cheered.id,
+    result,
+    pointsEarned,
+  }
+}
+
+// 본인 프로필 (기존 ME + 시즌 데이터 결합)
+export const ME_PROFILE: PublicProfile = {
+  ...ME,
+  stats: SEASON_STATS,
+  records: MY_RECORDS,
+  badges: BADGES,
+}
+
+// 타 유저 샘플 — 랭킹/대결에 등장하는 페르소나와 id를 맞춘다
+const MINJI_RECORDS: CheerRecord[] = [
+  rec(TEAMS.mancity, TEAMS.liverpool, 3, 1, TEAMS.mancity, "2026-11-13T23:30:00"),
+  rec(TEAMS.realmadrid, TEAMS.barcelona, 2, 0, TEAMS.realmadrid, "2026-11-08T23:00:00"),
+  rec(TEAMS.chelsea, TEAMS.arsenal, 1, 0, TEAMS.chelsea, "2026-11-01T22:00:00"),
+  rec(TEAMS.mancity, TEAMS.chelsea, 4, 2, TEAMS.mancity, "2026-10-25T22:00:00"),
+]
+
+const TOKKI_RECORDS: CheerRecord[] = [
+  rec(TEAMS.tottenham, TEAMS.arsenal, 0, 2, TEAMS.tottenham, "2026-11-13T20:30:00"),
+  rec(TEAMS.liverpool, TEAMS.tottenham, 3, 1, TEAMS.tottenham, "2026-11-06T22:00:00"),
+  rec(TEAMS.tottenham, TEAMS.chelsea, 1, 1, TEAMS.tottenham, "2026-10-30T20:30:00"),
+  rec(TEAMS.barcelona, TEAMS.tottenham, 2, 0, TEAMS.tottenham, "2026-10-23T23:00:00"),
+]
+
+export const PROFILES: Record<number, PublicProfile> = {
+  1: ME_PROFILE,
+  2: {
+    id: 2,
+    nickname: "승리요정민지",
+    bio: "맨시티 직관 가면 거의 이겨요 😎",
+    level: 15,
+    levelTitle: "승리 요정",
+    totalPoints: 5240,
+    teams: [TEAMS.mancity, TEAMS.realmadrid],
+    favoriteTeam: TEAMS.mancity,
+    style: [
+      { label: "열혈팬", value: 88, emoji: "🔥" },
+      { label: "분석왕", value: 95, emoji: "📊" },
+      { label: "데시벨러", value: 72, emoji: "📢" },
+    ],
+    stats: { total: 24, win: 18, draw: 2, lose: 4 },
+    records: MINJI_RECORDS,
+    badges: badgesWith(["VICTORY_FAIRY", "WIN_STREAK_3", "ANALYST", "LOUDEST"]),
+  },
+  3: {
+    id: 3,
+    nickname: "아쉬운토끼",
+    bio: "그래도 토트넘 끝까지 응원해요 🐰",
+    level: 9,
+    levelTitle: "꾸준 응원러",
+    totalPoints: 1980,
+    teams: [TEAMS.tottenham],
+    favoriteTeam: TEAMS.tottenham,
+    style: [
+      { label: "열혈팬", value: 96, emoji: "🔥" },
+      { label: "분석왕", value: 48, emoji: "📊" },
+      { label: "데시벨러", value: 90, emoji: "📢" },
+    ],
+    stats: { total: 20, win: 6, draw: 5, lose: 9 },
+    records: TOKKI_RECORDS,
+    badges: badgesWith(["DEFEAT_FAIRY", "STEADY_FAN", "NIGHT_OWL"]),
+  },
+}
+
+export function getProfile(id: number): PublicProfile | undefined {
+  return PROFILES[id]
+}
