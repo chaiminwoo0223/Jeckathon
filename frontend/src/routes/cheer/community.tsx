@@ -334,7 +334,7 @@ function Room({
       <button
         type="button"
         onClick={onEnterArena}
-        className="flex w-full items-center justify-between rounded-[26px] bg-[var(--c-ink)] p-6 text-left text-white shadow-[var(--shadow-float)] transition-transform hover:scale-[1.01]"
+        className="flex w-full items-center justify-between rounded-[26px] bg-[var(--c-arena)] p-6 text-left text-white shadow-[var(--shadow-float)] transition-transform hover:scale-[1.01]"
       >
         <div>
           <h2 className="text-xl font-black">🏟️ 응원 스타디움 입장</h2>
