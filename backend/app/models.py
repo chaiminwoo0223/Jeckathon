@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import UTC, datetime
+from datetime import date as date_type
 
 from pydantic import EmailStr
 from sqlalchemy import DateTime
@@ -181,4 +182,28 @@ class MatchPublic(MatchBase):
 
 class MatchesPublic(SQLModel):
     data: list[MatchPublic]
+    count: int
+
+
+class MatchDetail(MatchPublic):
+    """팀 정보를 풀어 담은 경기 응답 (화면이 팀명·로고를 바로 그린다)."""
+
+    home_team: TeamPublic
+    away_team: TeamPublic
+
+
+class MatchDay(SQLModel):
+    date: date_type  # KST 기준 날짜
+    matches: list[MatchDetail]
+
+
+class MatchesByMonth(SQLModel):
+    month: str  # "YYYY-MM"
+    days: list[MatchDay]  # 경기가 있는 날만, 날짜 오름차순
+    count: int
+
+
+class MatchesToday(SQLModel):
+    date: date_type
+    data: list[MatchDetail]
     count: int
