@@ -64,6 +64,8 @@ function CommunityPage() {
 
   const match = entered?.match ?? TODAY_MATCH
   const cheerTeam = entered?.cheeredTeam ?? TEAMS.arsenal
+  // 입장한 커뮤니티: 응원 스타디움·실시간 채팅이 백엔드 공간 WS에 붙는다(없으면 데모)
+  const communityId = entered?.communityId
 
   // countdown
   useEffect(() => {
@@ -113,6 +115,7 @@ function CommunityPage() {
   if (stage === "measuring")
     return (
       <Measuring
+        communityId={communityId}
         match={match}
         db={db}
         peak={peak}
@@ -133,12 +136,14 @@ function CommunityPage() {
     return (
       <ArenaStage
         onExit={() => setStage("room")}
+        communityId={communityId}
         myNickname={`${cheerTeam.name} 팬`}
         myTeam={{ name: cheerTeam.name, color: cheerTeam.color }}
       />
     )
   return (
     <Room
+      communityId={communityId}
       match={match}
       cheerTeam={cheerTeam}
       onStart={startBattle}
@@ -293,12 +298,14 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
 
 /* ---------------- Room ---------------- */
 function Room({
+  communityId,
   match,
   cheerTeam,
   onStart,
   onLeave,
   onEnterArena,
 }: {
+  communityId?: string
   match: Match
   cheerTeam: Team
   onStart: () => void
@@ -336,7 +343,7 @@ function Room({
         <SectionTitle icon="📺">경기 생중계</SectionTitle>
         <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
           <VideoStream home={match.home} away={match.away} />
-          <LiveChat fill />
+          <LiveChat fill communityId={communityId} />
         </div>
       </div>
 
@@ -463,6 +470,7 @@ function MiniRanking({
 
 /* ---------------- Measuring ---------------- */
 function Measuring({
+  communityId,
   match,
   db,
   peak,
@@ -470,6 +478,7 @@ function Measuring({
   remaining,
   onCancel,
 }: {
+  communityId?: string
   match: Match
   db: number
   peak: number
@@ -560,7 +569,7 @@ function Measuring({
               </div>
             </div>
           </SectionCard>
-          <LiveChat heightClass="h-[200px]" />
+          <LiveChat heightClass="h-[200px]" communityId={communityId} />
         </div>
       </div>
     </div>
