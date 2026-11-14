@@ -97,11 +97,6 @@ def _in(minutes: int) -> datetime:
     return datetime.now(UTC) + timedelta(minutes=minutes)
 
 
-# 입장 시작 = 킥오프 - ENTER_LEAD. 테스트는 상수를 따라간다(값이 바뀌어도 규칙만 확인)
-LEAD = community_service.ENTER_LEAD
-LEAD_MIN = int(LEAD.total_seconds() // 60)
-
-
 # --- 입장 규칙 (순수 함수) ---
 
 
@@ -114,15 +109,12 @@ def test_enter_window_boundaries() -> None:
         kickoff_at=kickoff,
         status=MatchStatus.SCHEDULED,
     )
-    opens = kickoff - LEAD
+    opens = kickoff - timedelta(hours=3)
     assert community_service.enter_window(m, opens - timedelta(seconds=1)) == (
         opens,
         False,
     )
-    assert community_service.enter_window(m, opens) == (
-        opens,
-        True,
-    )  # 정확히 ENTER_LEAD 전
+    assert community_service.enter_window(m, opens) == (opens, True)  # 정확히 3시간 전
     assert community_service.enter_window(m, kickoff + timedelta(hours=2))[1] is True
     m.status = MatchStatus.LIVE
     assert community_service.enter_window(m, kickoff)[1] is True
@@ -199,14 +191,14 @@ def test_mine_groups_by_kst_date_in_order(client: TestClient, db: Session) -> No
 def test_mine_reports_enter_state(client: TestClient, db: Session) -> None:
     fan = Fan(client)
     soon = _match(db, _in(30))  # 30분 뒤: 이미 입장 가능
-    later = _match(db, _in(LEAD_MIN + 60))  # 입장 시작보다 1시간 뒤: 아직
+    later = _match(db, _in(240))  # 4시간 뒤: 아직
     fan.cheer(soon)
     fan.cheer(later)
     items = {i["match"]["id"]: i for d in fan.mine()["days"] for i in d["items"]}
     assert items[str(soon.id)]["can_enter"] is True
     assert items[str(later.id)]["can_enter"] is False
     opens = datetime.fromisoformat(items[str(later.id)]["enter_opens_at"])
-    assert opens == later.kickoff_at - LEAD
+    assert opens == later.kickoff_at - timedelta(hours=3)
 
     cid = items[str(soon.id)]["community"]["id"]
     assert fan.join(cid).status_code == 200
@@ -228,7 +220,9 @@ def test_match_community_info(client: TestClient, db: Session) -> None:
         False,
     )
     assert info["can_enter"] is True
-    assert datetime.fromisoformat(info["enter_opens_at"]) == match.kickoff_at - LEAD
+    assert datetime.fromisoformat(
+        info["enter_opens_at"]
+    ) == match.kickoff_at - timedelta(hours=3)
     assert fan.community_of(match)["id"] == info["id"]  # 다시 불러도 같은 커뮤니티
     r = client.get(f"{API}/matches/{uuid.uuid4()}/community", headers=fan.headers)
     assert r.status_code == 404
@@ -246,16 +240,18 @@ def test_join_requires_cheer_and_open_window(client: TestClient, db: Session) ->
     assert r.status_code == 403
     assert r.json()["detail"] == {"code": "NOT_CHEERED"}
 
-    closed = _match(db, _in(LEAD_MIN + 1))  # 입장 시작 1분 전: 아직 닫혀 있다
+    closed = _match(db, _in(181))  # 3시간 1분 뒤: 아직 닫혀 있다
     fan.cheer(closed)
     r = fan.join(fan.community_of(closed)["id"])
     assert r.status_code == 403
     detail = r.json()["detail"]
     assert detail["code"] == "NOT_OPEN_YET"
-    assert datetime.fromisoformat(detail["enter_opens_at"]) == closed.kickoff_at - LEAD
+    assert datetime.fromisoformat(
+        detail["enter_opens_at"]
+    ) == closed.kickoff_at - timedelta(hours=3)
     assert fan.community_of(closed)["member_count"] == 0  # 거절됐으니 멤버가 아니다
 
-    just_open = _match(db, _in(LEAD_MIN - 1))  # 입장 시작 1분 뒤: 열렸다
+    just_open = _match(db, _in(179))  # 2시간 59분 뒤: 열렸다
     fan.cheer(just_open)
     assert fan.join(fan.community_of(just_open)["id"]).status_code == 200
 
