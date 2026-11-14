@@ -5,6 +5,7 @@ from app.core import security
 from app.core.config import settings
 from app.models import Badge, User, UserCreate, login_id_to_email
 from app.seed.kbo import seed_kbo
+from app.seed.players import seed_players
 from app.services.settlement import BADGES
 
 engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
@@ -38,6 +39,7 @@ def init_db(session: Session) -> None:
     if settings.FASTAPI_ENV == "development":
         _seed_test_users(session)
     seed_kbo(session)
+    seed_players(session)
     _seed_badges(session)
 
 

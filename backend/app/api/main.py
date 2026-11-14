@@ -4,6 +4,7 @@ from app.api.routes import (
     admin,
     battles,
     communities,
+    fortune,
     items,
     login,
     matches,
@@ -29,6 +30,7 @@ api_router.include_router(admin.router)
 api_router.include_router(communities.router)
 api_router.include_router(communities.match_router)
 api_router.include_router(battles.router)
+api_router.include_router(fortune.router)
 api_router.include_router(rewards.router)
 api_router.include_router(space.router)
 
