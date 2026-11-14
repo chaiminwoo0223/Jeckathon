@@ -305,6 +305,11 @@ Fortune {
 
 - `GET /me/share-card`: 닉네임·프로필 이미지, 요정(`fairy_type`·`fairy_label`), `stats`(`total`이 경기수, `/me`와 같은 규칙), `favorite_team`을 돌려준다(로그인 필요). **최애팀**은 응원 기록(진행 전 포함)에서 가장 많이 응원한 팀이고, 같은 횟수면 가장 최근에 응원한 팀이다. 응원 기록이 없으면 응원팀 설정(`/me/teams`)의 첫 팀, 그것도 없으면 `null`이다. 카드 이미지는 프론트가 그린다.
 
+**구현 메모 (BE-2)**
+
+- `GET /me/points?page=&size=`: 1부터 시작하는 `page`, 기본 `size` 20(최대 100). 최신순이고 로그인이 필요하다. 응답은 `{data: [{id, amount, reason, related_id, created_at}], count, page, size, total_points}`이고 `count`는 전체 내역 수다. `reason`은 `MATCH_RESULT`(`related_id`=matchId) 또는 `DECIBEL_TOP3`(`related_id`=battleId)다.
+- `GET /me/badges`: 획득한 배지를 최근 획득 순으로 돌려준다(로그인 필요). 응답은 `{data: [{code, name, description, icon_url, acquired_at}], count}`다.
+
 **경기 종료 처리 (내부 배치/관리자 트리거)**
 
 - `PATCH /admin/matches/{id}/finish` `{homeScore, awayScore}` 호출 시:
@@ -413,7 +418,8 @@ Fortune {
 - `endsAt` 지난 뒤 첫 `GET /battles/{id}` or `/result` 호출 시 서버가 status=FINISHED 전환(지연 정산). 별도 스케줄러 불필요.
 - 종료 시 peakDb 상위 3명에게 포인트(100/50/30) 지급 + PointTransaction 기록.
 - `maxPlayers`(5) 초과 입장 불가.
-- 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants}`, 종료 전이면 409. `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
+- 구현 메모: `POST /communities/{id}/battles` 본문 `{duration_sec}`(선택, 기본 60). 진행 중 대결이 있으면 새로 만들지 않고 그 대결을 돌려준다(모두 같은 대결 참여). `POST /battles/{id}/records`는 갱신된 대결 상태(GET과 같은 형태)를 돌려주므로 프론트는 측정 중 1초마다 제출하고 응답 리더보드를 그대로 쓴다. `/result`는 `{top3, me, my_top_percent, participants, my_points}`, 종료 전이면 409. `top3[]` 각 항목에는 실제로 받은 포인트 `points`가 들어 있고(PointTransaction에서 읽는다), `my_points`는 내가 받은 포인트다(TOP3 밖이면 0). `GET /communities/today`는 오늘(KST) 가장 이른 경기의 커뮤니티를 없으면 만들어 돌려준다.
+- 구현 메모 (정산): `endsAt`이 지난 뒤 처음 오는 `GET /battles/{id}`, `/result`, `POST /battles/{id}/records` 중 하나가 정산한다. 대결 행을 잠그고(`FOR UPDATE`) 다시 읽어 ONGOING을 본 요청 하나만 정산하므로 동시에 폴링해도 두 번 지급되지 않는다. peakDb 상위 3명에게 100/50/30을 `services/settlement.py`의 `grant_points(reason=DECIBEL_TOP3, related_id=battleId)`로 지급하고(3명 미만이면 있는 사람만), 참가자 전원을 `evaluate_badges(peak_db=)`로 데시벨 마스터 평가한다. 상태 전환·지급·배지는 한 트랜잭션이다. 기록 제출은 같은 행을 공유 잠금(`FOR SHARE`)으로 다시 읽고 `endsAt` 전인지 확인하므로, 정산과 겹치면 정산 쪽이 그 제출의 커밋을 기다려 순위에 반영하거나 제출이 409가 된다(정산 뒤에 기록이 끼어들지 않는다).
 
 ### 4.7 운세 (AI)
 
