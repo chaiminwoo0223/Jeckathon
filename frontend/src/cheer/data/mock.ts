@@ -152,42 +152,24 @@ export const MATCH_DAYS: Record<string, number> = {
 export const TODAY_MATCH = MATCHES[0] // 토트넘 vs 아스널
 
 // ---------- 관람 신청 (초대장) ----------
-// 유저가 "이 경기를 보러 가겠다"고 신청한 내역. 경기 1시간 전부터 입장 초대장이 활성화된다.
+// 캘린더에서 응원 신청한 경기. 경기 1시간 전부터 입장 초대장이 활성화된다.
+// 데이터는 GET /communities/mine (hooks/use-applied-matches.ts 가 이 모양으로 바꾼다).
 export interface AppliedMatch {
-  id: number // 신청 식별자 = matchId 재사용
+  id: number // 화면용 숫자 id (목 타입 호환). API 호출에는 matchId·communityId 를 쓴다
+  matchId: string
   match: Match
   cheeredTeam: Team
-}
-
-export const ENTRY_WINDOW_MIN = 60 // 경기 시작 N분 전부터 입장 가능
-const MATCH_DURATION_MIN = 150 // 킥오프 후 이 시간까지는 입장 유지(대략 경기 길이)
-
-// 데모 안정성용 시드. 킥오프를 "현재 시각 기준 상대값"으로 만들어
-// 언제 시연하든 "활성 초대장 / 잠긴 초대장" 상태를 모두 재현한다.
-export function seedAppliedMatches(now: Date = new Date()): AppliedMatch[] {
-  const at = (minFromNow: number) => new Date(now.getTime() + minFromNow * 60_000).toISOString()
-  return [
-    // 40분 뒤 → 1시간 이내 → 입장 가능
-    { id: 9001, cheeredTeam: TEAMS.arsenal, match: { id: 9001, home: TEAMS.tottenham, away: TEAMS.arsenal, league: "프리미어리그", kickoffAt: at(40), status: "SCHEDULED" } },
-    // 4시간 뒤 → 아직 잠김
-    { id: 9002, cheeredTeam: TEAMS.liverpool, match: { id: 9002, home: TEAMS.mancity, away: TEAMS.liverpool, league: "프리미어리그", kickoffAt: at(260), status: "SCHEDULED" } },
-    // 내일 → 잠김
-    { id: 9003, cheeredTeam: TEAMS.barcelona, match: { id: 9003, home: TEAMS.realmadrid, away: TEAMS.barcelona, league: "라리가", kickoffAt: at(1500), status: "SCHEDULED" } },
-  ]
+  venue: string // "잠실"
+  communityId: string
+  memberCount: number
+  joined: boolean // 이미 커뮤니티에 입장했는지
+  enterOpensAt: string // ISO, 서버가 정한 입장 시작 시각 (경기 1시간 전)
 }
 
 export interface InvitationState {
   canEnter: boolean // 입장 버튼 활성화 여부 (경기 1시간 전 ~ 경기 종료)
-  started: boolean // 킥오프가 지났는지
-  minutesUntil: number // 킥오프까지 남은 분 (음수면 이미 시작)
-}
-
-export function invitationState(kickoffAt: string, now: Date = new Date()): InvitationState {
-  const diffMs = new Date(kickoffAt).getTime() - now.getTime()
-  const minutesUntil = Math.ceil(diffMs / 60_000)
-  const started = diffMs <= 0
-  const canEnter = minutesUntil <= ENTRY_WINDOW_MIN && diffMs > -MATCH_DURATION_MIN * 60_000
-  return { canEnter, started, minutesUntil }
+  started: boolean // 경기 시작 시각이 지났는지
+  minutesUntil: number // 경기 시작까지 남은 분 (음수면 이미 시작)
 }
 
 // 킥오프까지 남은 시간을 사람이 읽는 문구로. (양수 분 기준)
