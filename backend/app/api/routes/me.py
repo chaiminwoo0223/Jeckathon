@@ -1,14 +1,20 @@
 import uuid
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, col, select
+from fastapi import APIRouter, HTTPException, Query
+from sqlmodel import Session, col, func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.api.routes.matches import to_match_details
 from app.models import (
+    CheerRecord,
+    CheerRecordItem,
+    CheerRecordsPublic,
+    Match,
     MeProfile,
     MeSummary,
     ProfileUpdate,
+    StatsPublic,
     Team,
     TeamPublic,
     TeamsPublic,
@@ -60,9 +66,9 @@ def _get_or_create_setting(session: Session, user: User) -> UserSetting:
 @router.get("", response_model=MeSummary)
 def read_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
-    내 프로필 + 통계 요약. 응원 기록(CheerRecord)이 생기기 전까지 stats는 전부 0이다.
+    내 프로필 + 통계 요약. 통계는 확정된 응원 기록(PENDING 제외)으로 센다.
     """
-    stats = stats_service.build_stats(win=0, draw=0, lose=0)
+    stats = stats_service.user_stats(session, current_user.id)
     fairy = stats_service.fairy_type(win=stats.win, lose=stats.lose)
     return MeSummary(
         **to_profile(current_user).model_dump(),
@@ -71,6 +77,44 @@ def read_me(session: SessionDep, current_user: CurrentUser) -> Any:
         stats=stats,
         teams=_my_teams(session, current_user).data,
     )
+
+
+@router.get("/records", response_model=CheerRecordsPublic)
+def read_my_records(
+    session: SessionDep,
+    current_user: CurrentUser,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> Any:
+    """
+    내 응원 기록. 최근 경기 순, 1부터 시작하는 page.
+    """
+    where = CheerRecord.user_id == current_user.id
+    count = session.exec(
+        select(func.count()).select_from(CheerRecord).where(where)
+    ).one()
+    rows = session.exec(
+        select(CheerRecord, Match)
+        .join(Match, col(Match.id) == col(CheerRecord.match_id))
+        .where(where)
+        .order_by(col(Match.kickoff_at).desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    ).all()
+    details = to_match_details(session, [m for _, m in rows])
+    items = [
+        CheerRecordItem(**record.model_dump(), match=detail)
+        for (record, _), detail in zip(rows, details, strict=True)
+    ]
+    return CheerRecordsPublic(data=items, count=count, page=page, size=size)
+
+
+@router.get("/stats", response_model=StatsPublic)
+def read_my_stats(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    시즌 통계(도넛용): 승/무/패 수와 승률·패배율. 진행 전(PENDING) 기록은 세지 않는다.
+    """
+    return stats_service.user_stats(session, current_user.id)
 
 
 @router.patch("/profile", response_model=MeProfile)
