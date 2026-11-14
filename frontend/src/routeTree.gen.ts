@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as CheerRouteImport } from './routes/cheer'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RecoverPasswordRouteImport } from './routes/recover-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -18,9 +19,19 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutItemsRouteImport } from './routes/_layout/items'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as CheerIndexRouteImport } from './routes/cheer/index'
+import { Route as CheerCalendarRouteImport } from './routes/cheer/calendar'
+import { Route as CheerCommunityRouteImport } from './routes/cheer/community'
+import { Route as CheerMypageRouteImport } from './routes/cheer/mypage'
+import { Route as CheerSettingsRouteImport } from './routes/cheer/settings'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheerRoute = CheerRouteImport.update({
+  id: '/cheer',
+  path: '/cheer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -63,9 +74,35 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const CheerIndexRoute = CheerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CheerRoute,
+} as any)
+const CheerCalendarRoute = CheerCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => CheerRoute,
+} as any)
+const CheerCommunityRoute = CheerCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => CheerRoute,
+} as any)
+const CheerMypageRoute = CheerMypageRouteImport.update({
+  id: '/mypage',
+  path: '/mypage',
+  getParentRoute: () => CheerRoute,
+} as any)
+const CheerSettingsRoute = CheerSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => CheerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
+  '/cheer': typeof CheerRouteWithChildren
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -73,6 +110,11 @@ export interface FileRoutesByFullPath {
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/cheer/calendar': typeof CheerCalendarRoute
+  '/cheer/community': typeof CheerCommunityRoute
+  '/cheer/mypage': typeof CheerMypageRoute
+  '/cheer/settings': typeof CheerSettingsRoute
+  '/cheer/': typeof CheerIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -82,11 +124,17 @@ export interface FileRoutesByTo {
   '/admin': typeof LayoutAdminRoute
   '/items': typeof LayoutItemsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/cheer/calendar': typeof CheerCalendarRoute
+  '/cheer/community': typeof CheerCommunityRoute
+  '/cheer/mypage': typeof CheerMypageRoute
+  '/cheer/settings': typeof CheerSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/cheer': typeof CheerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
+  '/cheer': typeof CheerRouteWithChildren
   '/login': typeof LoginRoute
   '/recover-password': typeof RecoverPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -94,12 +142,18 @@ export interface FileRoutesById {
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/items': typeof LayoutItemsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/cheer/calendar': typeof CheerCalendarRoute
+  '/cheer/community': typeof CheerCommunityRoute
+  '/cheer/mypage': typeof CheerMypageRoute
+  '/cheer/settings': typeof CheerSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/cheer/': typeof CheerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cheer'
     | '/login'
     | '/recover-password'
     | '/reset-password'
@@ -107,6 +161,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/items'
     | '/settings'
+    | '/cheer/calendar'
+    | '/cheer/community'
+    | '/cheer/mypage'
+    | '/cheer/settings'
+    | '/cheer/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -116,10 +175,16 @@ export interface FileRouteTypes {
     | '/admin'
     | '/items'
     | '/settings'
+    | '/cheer/calendar'
+    | '/cheer/community'
+    | '/cheer/mypage'
+    | '/cheer/settings'
     | '/'
+    | '/cheer'
   id:
     | '__root__'
     | '/_layout'
+    | '/cheer'
     | '/login'
     | '/recover-password'
     | '/reset-password'
@@ -127,11 +192,17 @@ export interface FileRouteTypes {
     | '/_layout/admin'
     | '/_layout/items'
     | '/_layout/settings'
+    | '/cheer/calendar'
+    | '/cheer/community'
+    | '/cheer/mypage'
+    | '/cheer/settings'
     | '/_layout/'
+    | '/cheer/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
+  CheerRoute: typeof CheerRouteWithChildren
   LoginRoute: typeof LoginRoute
   RecoverPasswordRoute: typeof RecoverPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -145,6 +216,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cheer': {
+      id: '/cheer'
+      path: '/cheer'
+      fullPath: '/cheer'
+      preLoaderRoute: typeof CheerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -203,6 +281,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/cheer/': {
+      id: '/cheer/'
+      path: '/'
+      fullPath: '/cheer/'
+      preLoaderRoute: typeof CheerIndexRouteImport
+      parentRoute: typeof CheerRoute
+    }
+    '/cheer/calendar': {
+      id: '/cheer/calendar'
+      path: '/calendar'
+      fullPath: '/cheer/calendar'
+      preLoaderRoute: typeof CheerCalendarRouteImport
+      parentRoute: typeof CheerRoute
+    }
+    '/cheer/community': {
+      id: '/cheer/community'
+      path: '/community'
+      fullPath: '/cheer/community'
+      preLoaderRoute: typeof CheerCommunityRouteImport
+      parentRoute: typeof CheerRoute
+    }
+    '/cheer/mypage': {
+      id: '/cheer/mypage'
+      path: '/mypage'
+      fullPath: '/cheer/mypage'
+      preLoaderRoute: typeof CheerMypageRouteImport
+      parentRoute: typeof CheerRoute
+    }
+    '/cheer/settings': {
+      id: '/cheer/settings'
+      path: '/settings'
+      fullPath: '/cheer/settings'
+      preLoaderRoute: typeof CheerSettingsRouteImport
+      parentRoute: typeof CheerRoute
+    }
   }
 }
 
@@ -223,8 +336,27 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+interface CheerRouteChildren {
+  CheerCalendarRoute: typeof CheerCalendarRoute
+  CheerCommunityRoute: typeof CheerCommunityRoute
+  CheerMypageRoute: typeof CheerMypageRoute
+  CheerSettingsRoute: typeof CheerSettingsRoute
+  CheerIndexRoute: typeof CheerIndexRoute
+}
+
+const CheerRouteChildren: CheerRouteChildren = {
+  CheerCalendarRoute: CheerCalendarRoute,
+  CheerCommunityRoute: CheerCommunityRoute,
+  CheerMypageRoute: CheerMypageRoute,
+  CheerSettingsRoute: CheerSettingsRoute,
+  CheerIndexRoute: CheerIndexRoute,
+}
+
+const CheerRouteWithChildren = CheerRoute._addFileChildren(CheerRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
+  CheerRoute: CheerRouteWithChildren,
   LoginRoute: LoginRoute,
   RecoverPasswordRoute: RecoverPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
