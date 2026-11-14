@@ -1,21 +1,57 @@
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ChevronRight, MessageCircle } from "lucide-react"
-import { Avatar, Pill, RankBadge, SectionCard, SectionTitle } from "@/cheer/components/primitives"
+import {
+  Avatar,
+  Pill,
+  RankBadge,
+  SectionCard,
+  SectionTitle,
+} from "@/cheer/components/primitives"
 import {
   COMMUNITY_FEED,
-  DEFEAT_RANKING,
   formatTime,
   pct,
   type RankingEntry,
   TODAY_MATCH,
-  VICTORY_RANKING,
 } from "@/cheer/data/mock"
+import { type RankingEntryPublic, RankingsService } from "@/client"
 
 export const Route = createFileRoute("/cheer/")({
   component: HomePage,
 })
 
+// API 랭킹 응답에는 아바타 이모지가 없어 순위 기준으로 안정적으로 하나 고른다.
+const RANK_EMOJI = ["🦁", "🐯", "🐻", "🐰", "🐱", "🦊", "🐸", "🐧", "🐥", "🐨"]
+
+function toRankingEntry(e: RankingEntryPublic): RankingEntry {
+  return {
+    rank: e.rank,
+    nickname: e.nickname,
+    rate: e.rate,
+    played: e.played,
+    wins: e.win,
+    emoji: RANK_EMOJI[(e.rank - 1) % RANK_EMOJI.length],
+  }
+}
+
 function HomePage() {
+  // 오늘의 승리요정/패배요정 랭킹 — 폴링으로 "실시간" 연출 (명세 §4.5)
+  const victoryQuery = useQuery({
+    queryKey: ["rankings", "victory"],
+    queryFn: async () => (await RankingsService.readVictoryRanking()).data,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+  const defeatQuery = useQuery({
+    queryKey: ["rankings", "defeat"],
+    queryFn: async () => (await RankingsService.readDefeatRanking()).data,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+  const victoryRanking = (victoryQuery.data?.data ?? []).map(toRankingEntry)
+  const defeatRanking = (defeatQuery.data?.data ?? []).map(toRankingEntry)
+
   return (
     <div className="cheer-reveal space-y-6">
       {/* top bar */}
@@ -28,10 +64,12 @@ function HomePage() {
         <div className="relative z-10 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black tracking-tight">
-              {TODAY_MATCH.home.name} <span className="opacity-70">vs</span> {TODAY_MATCH.away.name}
+              {TODAY_MATCH.home.name} <span className="opacity-70">vs</span>{" "}
+              {TODAY_MATCH.away.name}
             </h2>
             <p className="mt-1 text-sm font-semibold text-white/80">
-              11.14 (금) {formatTime(TODAY_MATCH.kickoffAt)} · {TODAY_MATCH.league}
+              11.14 (금) {formatTime(TODAY_MATCH.kickoffAt)} ·{" "}
+              {TODAY_MATCH.league}
             </p>
             <Link
               to="/cheer/community"
@@ -51,14 +89,14 @@ function HomePage() {
           title="오늘의 패배요정 랭킹"
           question="패배율이 가장 높은 유저는 누구일까요?"
           emoji="🌧️"
-          data={DEFEAT_RANKING}
+          data={defeatRanking}
         />
         <RankingCard
           variant="victory"
           title="오늘의 승리요정 랭킹"
           question="승률이 가장 높은 유저는 누구일까요?"
           emoji="👑"
-          data={VICTORY_RANKING}
+          data={victoryRanking}
         />
       </div>
 
@@ -66,11 +104,17 @@ function HomePage() {
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <SectionCard>
           <SectionTitle
-            icon={<MessageCircle size={18} className="text-[var(--c-primary)]" />}
+            icon={
+              <MessageCircle size={18} className="text-[var(--c-primary)]" />
+            }
             right={
-              <Link to="/cheer/community" className="flex items-center gap-1 text-xs font-bold text-[var(--c-primary)]">
+              <Link
+                to="/cheer/community"
+                className="flex items-center gap-1 text-xs font-bold text-[var(--c-primary)]"
+              >
                 <span className="mr-1 inline-flex items-center gap-1 text-[var(--c-win)]">
-                  <span className="size-2 rounded-full bg-[var(--c-win)]" /> 14명 참여 중
+                  <span className="size-2 rounded-full bg-[var(--c-win)]" />{" "}
+                  14명 참여 중
                 </span>
                 채팅방 입장 <ChevronRight size={14} />
               </Link>
@@ -84,9 +128,13 @@ function HomePage() {
                 <Avatar emoji={m.emoji} size={34} />
                 <div className="min-w-0 flex-1">
                   <span className="text-sm font-extrabold">{m.nickname}</span>
-                  <span className="ml-2 text-sm text-[var(--c-ink-soft)]">{m.text}</span>
+                  <span className="ml-2 text-sm text-[var(--c-ink-soft)]">
+                    {m.text}
+                  </span>
                 </div>
-                <span className="shrink-0 text-xs text-[var(--c-muted)]">{m.ago}</span>
+                <span className="shrink-0 text-xs text-[var(--c-muted)]">
+                  {m.ago}
+                </span>
               </li>
             ))}
           </ul>
@@ -96,9 +144,13 @@ function HomePage() {
           <div className="relative z-10">
             <div className="mb-3 text-5xl">🏆</div>
             <h4 className="text-lg font-black leading-snug">
-              오늘도 응원하고,<br />랭킹에 도전해보세요!
+              오늘도 응원하고,
+              <br />
+              랭킹에 도전해보세요!
             </h4>
-            <p className="mt-1 text-sm text-white/80">함께하는 응원이 더 재밌어요</p>
+            <p className="mt-1 text-sm text-white/80">
+              함께하는 응원이 더 재밌어요
+            </p>
             <Link
               to="/cheer/community"
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-extrabold text-[var(--c-primary-700)]"
@@ -130,7 +182,9 @@ function RankingCard({
   const soft = isVictory ? "var(--c-primary-50)" : "var(--c-lose-soft)"
   return (
     <SectionCard className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -right-4 -top-4 text-7xl opacity-10">{emoji}</div>
+      <div className="pointer-events-none absolute -right-4 -top-4 text-7xl opacity-10">
+        {emoji}
+      </div>
       <div className="mb-3 flex items-start justify-between">
         <div>
           <h3 className="flex items-center gap-1.5 text-[16px] font-black">
@@ -138,7 +192,9 @@ function RankingCard({
           </h3>
           <p className="mt-0.5 text-xs text-[var(--c-ink-soft)]">{question}</p>
         </div>
-        <Pill color={accent} bg={soft}>실시간</Pill>
+        <Pill color={accent} bg={soft}>
+          실시간
+        </Pill>
       </div>
       <ul className="space-y-1.5">
         {data.map((e) => (
@@ -147,10 +203,20 @@ function RankingCard({
             className="flex items-center gap-3 rounded-2xl px-2.5 py-2"
             style={e.rank === 1 ? { background: soft } : undefined}
           >
-            <div className="w-6 text-center"><RankBadge rank={e.rank} /></div>
-            <Avatar emoji={e.emoji} size={34} ring={e.rank === 1 ? accent : undefined} />
-            <span className="flex-1 truncate text-sm font-extrabold">{e.nickname}</span>
-            <span className="text-base font-black" style={{ color: accent }}>{pct(e.rate)}</span>
+            <div className="w-6 text-center">
+              <RankBadge rank={e.rank} />
+            </div>
+            <Avatar
+              emoji={e.emoji}
+              size={34}
+              ring={e.rank === 1 ? accent : undefined}
+            />
+            <span className="flex-1 truncate text-sm font-extrabold">
+              {e.nickname}
+            </span>
+            <span className="text-base font-black" style={{ color: accent }}>
+              {pct(e.rate)}
+            </span>
             <span className="w-16 text-right text-xs text-[var(--c-muted)]">
               {e.wins} / {e.played} 경기
             </span>
