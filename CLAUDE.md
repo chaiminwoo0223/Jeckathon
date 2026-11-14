@@ -62,7 +62,7 @@ ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)])
 백엔드: `backend/app/api/routes/space.py`, `backend/app/services/space.py`(BE-2). 채팅은 위 채팅 WS를 그대로 쓰고, 공간은 누가 어디 서 있는지와 이모트만 다룬다.
 
 - 주소: `WS /api/v1/communities/{community_id}/space/ws?token=<access_token>`. `community_id`는 `GET /communities/today`의 `id`(UUID). 토큰·호스트는 채팅과 같다.
-- 거부: 토큰이 틀리거나 커뮤니티가 없으면 연결 전에 끊긴다(close code 1008). 이때는 재연결하지 말고 로그인으로 보낸다.
+- 거부: 토큰이 틀리거나, 그 커뮤니티에 입장(`POST /communities/{id}/join`)하지 않았으면 연결 전에 끊긴다(close code 1008). 이때는 재연결하지 않는다. 먼저 join이 성공해야 공간에 붙는다.
 - 좌표: 칸(grid). 원점 왼쪽 위, `x` 0..19, `y` 0..11 정수(크기는 snapshot `room.w`·`room.h`). 화면은 칸을 컨테이너 크기에 맞춰 늘리고, 칸 이동은 CSS `transition`으로 부드럽게 한다.
 - 받기(server→client), JSON `type`으로 가른다:
   - `snapshot` (연결 직후 한 번): `{"type":"snapshot","v":1,"me":"<내 user_id>","room":{"id":"<community_id>","w":20,"h":12},"users":[{"user_id","name","avatar_url","x","y"}]}`. 받으면 사람 목록을 통째로 바꾼다.

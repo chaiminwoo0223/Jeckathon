@@ -10,7 +10,7 @@ from sqlmodel import Session
 
 from app.api.deps import get_current_user
 from app.core.db import engine
-from app.models import Community
+from app.models import CommunityMember
 from app.services.space import H, W, hub
 
 router = APIRouter(prefix="/communities", tags=["space"])
@@ -31,7 +31,8 @@ async def space_ws(websocket: WebSocket, community_id: uuid.UUID, token: str) ->
     try:
         with Session(engine) as session:
             user = get_current_user(session, token)
-            if session.get(Community, community_id) is None:
+            # 커뮤니티에 입장(POST /communities/{id}/join)한 사람만 공간에 들어온다
+            if session.get(CommunityMember, (community_id, user.id)) is None:
                 raise HTTPException(status_code=404)
             uid = str(user.id)
             me: dict[str, Any] = {

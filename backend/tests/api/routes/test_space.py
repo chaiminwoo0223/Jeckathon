@@ -8,7 +8,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.api.routes.communities import get_or_create_community
 from app.core.config import settings
-from app.models import Match
+from app.models import CommunityMember, Match, User
 
 
 def _url(cid: object, headers: dict[str, str]) -> str:
@@ -25,6 +25,11 @@ def test_space_join_move_leave(
     match = db.exec(select(Match)).first()
     assert match is not None
     cid = get_or_create_community(db, match.id).id
+    for email in (settings.EMAIL_TEST_USER, settings.FIRST_SUPERUSER):
+        user = db.exec(select(User).where(User.email == email)).one()
+        if db.get(CommunityMember, (cid, user.id)) is None:
+            db.add(CommunityMember(community_id=cid, user_id=user.id))
+    db.commit()
     # 앞선 실행이 남긴 접속 수가 있으면 leave가 안 온다
     redis.Redis.from_url(settings.REDIS_URL).delete(
         *(f"space:{cid}:{k}" for k in ("users", "seen", "conns"))
@@ -58,12 +63,25 @@ def test_space_join_move_leave(
         assert msg == {"type": "leave", "user_id": b_id}
 
 
-def test_space_rejects_bad_token_and_unknown_community(
-    client: TestClient, normal_user_token_headers: dict[str, str]
+def _community_without(db: Session, email: str) -> uuid.UUID:
+    """그 사람이 입장하지 않은 커뮤니티 하나."""
+    user = db.exec(select(User).where(User.email == email)).one()
+    for match in db.exec(select(Match)).all():
+        cid = get_or_create_community(db, match.id).id
+        if db.get(CommunityMember, (cid, user.id)) is None:
+            return cid
+    raise AssertionError("no community without membership")
+
+
+def test_space_rejects_bad_token_unknown_community_and_non_member(
+    client: TestClient, db: Session, normal_user_token_headers: dict[str, str]
 ) -> None:
     for url in (
         f"{settings.API_V1_STR}/communities/{uuid.uuid4()}/space/ws?token=bad",
         _url(uuid.uuid4(), normal_user_token_headers),
+        _url(
+            _community_without(db, settings.EMAIL_TEST_USER), normal_user_token_headers
+        ),
     ):
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect(url) as ws:
