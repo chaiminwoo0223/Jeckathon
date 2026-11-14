@@ -60,7 +60,6 @@ def _finish(session: SessionDep, battle_id: uuid.UUID) -> None:
         return
     battle.status = BattleStatus.FINISHED
     session.add(battle)
-    # shortcut: 종료 직전에 상태 검사를 통과한 기록 제출이 정산 뒤에 들어올 수 있다(지급엔 반영 안 됨). 문제 되면 submit_record에서도 행 잠금
     board = _leaderboard(session, battle.id)
     top3 = zip(board, settlement.DECIBEL_TOP3_POINTS, strict=False)
     # 유저 id 순으로 지급해 경기 정산과 잠금 순서를 맞춘다(데드락 방지)
@@ -176,8 +175,18 @@ def submit_record(
     """
     측정 중 peak dB 제출. 측정하는 동안 계속 보내도 되고, 서버는 최댓값만 남긴다. 응답은 갱신된 대결 상태.
     """
-    battle = _get_battle(session, id)
-    if battle.status != BattleStatus.ONGOING:
+    _get_battle(session, id)
+    # 공유 잠금(FOR SHARE)으로 다시 읽는다. 정산(FOR UPDATE)과 겹치면 정산이 끝날 때까지 기다려 409가 되고,
+    # 제출이 먼저 잠그면 정산이 이 제출의 커밋을 기다려 순위에 반영한다
+    battle = session.exec(
+        select(Battle)
+        .where(Battle.id == id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).one()
+    if battle.status != BattleStatus.ONGOING or (
+        battle.ends_at and datetime.now(UTC) >= battle.ends_at
+    ):
         raise HTTPException(status_code=409, detail="Battle is not ongoing")
 
     joined = session.exec(
