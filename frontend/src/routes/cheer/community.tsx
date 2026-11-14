@@ -1,17 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { ArrowLeft, CalendarDays, Mic, Sparkles, Ticket as TicketIcon, Trophy, Users } from "lucide-react"
+import {
+  ArrowLeft,
+  CalendarDays,
+  Mic,
+  Sparkles,
+  Ticket as TicketIcon,
+  Trophy,
+  Users,
+} from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
+import { ArenaStage } from "@/cheer/arena/arena-stage"
 import { Confetti } from "@/cheer/components/confetti"
 import { DecibelMeter } from "@/cheer/components/decibel-meter"
 import { LiveChat } from "@/cheer/components/live-chat"
 import { Mascot } from "@/cheer/components/mascot"
-import { Avatar, Pill, RankBadge, SectionCard, SectionTitle } from "@/cheer/components/primitives"
+import {
+  Avatar,
+  Pill,
+  RankBadge,
+  SectionCard,
+  SectionTitle,
+} from "@/cheer/components/primitives"
 import { Ticket } from "@/cheer/components/ticket"
 import { VideoStream } from "@/cheer/components/video-stream"
-import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
-import { useCountUp } from "@/cheer/hooks/use-count-up"
-import { useDecibel } from "@/cheer/hooks/use-decibel"
-import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
 import {
   type AppliedMatch,
   BATTLE_PLAYERS,
@@ -23,17 +34,21 @@ import {
   invitationState,
   type Match,
   pct,
-  type Team,
   TEAMS,
+  type Team,
   TODAY_MATCH,
   VICTORY_RANKING,
 } from "@/cheer/data/mock"
+import { useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
+import { useCountUp } from "@/cheer/hooks/use-count-up"
+import { useDecibel } from "@/cheer/hooks/use-decibel"
+import { playFanfare, playTick, playWhistle } from "@/cheer/lib/sound"
 
 export const Route = createFileRoute("/cheer/community")({
   component: CommunityPage,
 })
 
-type Stage = "invite" | "room" | "measuring" | "result"
+type Stage = "invite" | "room" | "measuring" | "result" | "arena"
 const BATTLE_SECONDS = 20
 const TARGET_DB = 90
 
@@ -104,8 +119,30 @@ function CommunityPage() {
       />
     )
   if (stage === "result")
-    return <Result myPeak={finalPeak} onAgain={startBattle} onBack={() => setStage("room")} />
-  return <Room match={match} cheerTeam={cheerTeam} onStart={startBattle} onLeave={() => setStage("invite")} />
+    return (
+      <Result
+        myPeak={finalPeak}
+        onAgain={startBattle}
+        onBack={() => setStage("room")}
+      />
+    )
+  if (stage === "arena")
+    return (
+      <ArenaStage
+        onExit={() => setStage("room")}
+        myNickname={`${cheerTeam.name} 팬`}
+        myTeam={{ name: cheerTeam.name, color: cheerTeam.color }}
+      />
+    )
+  return (
+    <Room
+      match={match}
+      cheerTeam={cheerTeam}
+      onStart={startBattle}
+      onLeave={() => setStage("invite")}
+      onEnterArena={() => setStage("arena")}
+    />
+  )
 }
 
 /* ---------------- Invite (입장 초대장) ---------------- */
@@ -120,7 +157,11 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
   }, [])
 
   const items = useMemo(
-    () => applied.map((am) => ({ am, state: invitationState(am.match.kickoffAt, now) })),
+    () =>
+      applied.map((am) => ({
+        am,
+        state: invitationState(am.match.kickoffAt, now),
+      })),
     [applied, now],
   )
   const open = items.filter((i) => i.state.canEnter)
@@ -135,7 +176,9 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
             <Mascot size="xl" float flag />
           </div>
           <Pill className="mx-auto">🎟️ 입장 초대장</Pill>
-          <h2 className="mt-3 text-2xl font-black leading-snug">아직 신청한 경기가 없어요</h2>
+          <h2 className="mt-3 text-2xl font-black leading-snug">
+            아직 신청한 경기가 없어요
+          </h2>
           <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
             캘린더에서 보고 싶은 경기를 골라 응원 신청을 하면
             <br />
@@ -157,8 +200,12 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
       <div className="flex items-center justify-between">
         <div>
           <Pill>🎟️ 입장 초대장</Pill>
-          <h1 className="mt-2 text-2xl font-black tracking-tight">내 관람 신청 내역</h1>
-          <p className="text-sm text-[var(--c-muted)]">경기 시작 1시간 전부터 입장할 수 있어요</p>
+          <h1 className="mt-2 text-2xl font-black tracking-tight">
+            내 관람 신청 내역
+          </h1>
+          <p className="text-sm text-[var(--c-muted)]">
+            경기 시작 1시간 전부터 입장할 수 있어요
+          </p>
         </div>
         <Link
           to="/cheer/calendar"
@@ -178,7 +225,12 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
           </h2>
           <div className="grid gap-4 lg:grid-cols-2">
             {open.map(({ am, state }) => (
-              <Ticket key={am.id} applied={am} state={state} onEnter={() => onEnter(am)} />
+              <Ticket
+                key={am.id}
+                applied={am}
+                state={state}
+                onEnter={() => onEnter(am)}
+              />
             ))}
           </div>
         </section>
@@ -192,7 +244,12 @@ function InviteList({ onEnter }: { onEnter: (am: AppliedMatch) => void }) {
           </h2>
           <div className="grid gap-4 lg:grid-cols-2">
             {upcoming.map(({ am, state }) => (
-              <Ticket key={am.id} applied={am} state={state} onEnter={() => onEnter(am)} />
+              <Ticket
+                key={am.id}
+                applied={am}
+                state={state}
+                onEnter={() => onEnter(am)}
+              />
             ))}
           </div>
         </section>
@@ -207,11 +264,13 @@ function Room({
   cheerTeam,
   onStart,
   onLeave,
+  onEnterArena,
 }: {
   match: Match
   cheerTeam: Team
   onStart: () => void
   onLeave: () => void
+  onEnterArena: () => void
 }) {
   const fortune = FORTUNES[cheerTeam.id] ?? FORTUNES[TEAMS.arsenal.id]
   return (
@@ -230,7 +289,8 @@ function Room({
             {match.home.name} vs {match.away.name}
           </h1>
           <p className="text-sm text-[var(--c-muted)]">
-            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} · {match.league}
+            {formatKDate(match.kickoffAt)} {formatTime(match.kickoffAt)} ·{" "}
+            {match.league}
           </p>
         </div>
         <Pill color="var(--c-win)" bg="var(--c-win-soft)">
@@ -255,7 +315,8 @@ function Room({
               <Trophy size={20} /> 응원 데시벨 대결
             </h2>
             <p className="mt-1 max-w-sm text-sm text-white/85">
-              가장 크게 응원하는 3명에게 포인트가 지급돼요. 마이크를 켜고 목청껏 외쳐보세요!
+              가장 크게 응원하는 3명에게 포인트가 지급돼요. 마이크를 켜고 목청껏
+              외쳐보세요!
             </p>
             <button
               type="button"
@@ -269,20 +330,53 @@ function Room({
         </div>
       </div>
 
+      {/* arena 입장 */}
+      <button
+        type="button"
+        onClick={onEnterArena}
+        className="flex w-full items-center justify-between rounded-[26px] bg-[var(--c-ink)] p-6 text-left text-white shadow-[var(--shadow-float)] transition-transform hover:scale-[1.01]"
+      >
+        <div>
+          <h2 className="text-xl font-black">🏟️ 응원 스타디움 입장</h2>
+          <p className="mt-1 max-w-sm text-sm text-white/80">
+            3D 경기장에서 팀 유니폼을 입은 다른 팬들과 함께 돌아다니며 응원해요
+          </p>
+        </div>
+        <span className="text-3xl">→</span>
+      </button>
+
       {/* rankings mini */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <MiniRanking title="오늘의 패배요정 랭킹" emoji="🌧️" accent="var(--c-lose)" soft="var(--c-lose-soft)" data={DEFEAT_RANKING.slice(0, 3)} />
-        <MiniRanking title="오늘의 승리요정 랭킹" emoji="👑" accent="var(--c-primary)" soft="var(--c-primary-50)" data={VICTORY_RANKING.slice(0, 3)} />
+        <MiniRanking
+          title="오늘의 패배요정 랭킹"
+          emoji="🌧️"
+          accent="var(--c-lose)"
+          soft="var(--c-lose-soft)"
+          data={DEFEAT_RANKING.slice(0, 3)}
+        />
+        <MiniRanking
+          title="오늘의 승리요정 랭킹"
+          emoji="👑"
+          accent="var(--c-primary)"
+          soft="var(--c-primary-50)"
+          data={VICTORY_RANKING.slice(0, 3)}
+        />
       </div>
 
       {/* fortune */}
       <SectionCard className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -right-2 -top-2 text-6xl opacity-15">🔮</div>
-        <SectionTitle icon={<Sparkles size={18} className="text-[var(--c-primary)]" />}>
+        <div className="pointer-events-none absolute -right-2 -top-2 text-6xl opacity-15">
+          🔮
+        </div>
+        <SectionTitle
+          icon={<Sparkles size={18} className="text-[var(--c-primary)]" />}
+        >
           입장 기념 · {cheerTeam.name}의 오늘 운세
         </SectionTitle>
         <div className="rounded-2xl bg-[var(--c-primary-50)] p-4">
-          <p className="text-[15px] font-bold text-[var(--c-primary-700)]">"{fortune.fortuneText}"</p>
+          <p className="text-[15px] font-bold text-[var(--c-primary-700)]">
+            "{fortune.fortuneText}"
+          </p>
           <p className="mt-2 text-sm text-[var(--c-ink-soft)]">
             💡 오늘의 응원 팁: {fortune.cheerTip}
           </p>
@@ -312,11 +406,21 @@ function MiniRanking({
       </h3>
       <ul className="space-y-1.5">
         {data.map((e) => (
-          <li key={e.rank} className="flex items-center gap-3 rounded-xl px-2 py-1.5" style={e.rank === 1 ? { background: soft } : undefined}>
-            <div className="w-6 text-center"><RankBadge rank={e.rank} /></div>
+          <li
+            key={e.rank}
+            className="flex items-center gap-3 rounded-xl px-2 py-1.5"
+            style={e.rank === 1 ? { background: soft } : undefined}
+          >
+            <div className="w-6 text-center">
+              <RankBadge rank={e.rank} />
+            </div>
             <Avatar emoji={e.emoji} size={30} />
-            <span className="flex-1 truncate text-sm font-bold">{e.nickname}</span>
-            <span className="font-black" style={{ color: accent }}>{pct(e.rate)}</span>
+            <span className="flex-1 truncate text-sm font-bold">
+              {e.nickname}
+            </span>
+            <span className="font-black" style={{ color: accent }}>
+              {pct(e.rate)}
+            </span>
           </li>
         ))}
       </ul>
@@ -354,12 +458,23 @@ function Measuring({
   return (
     <div className="cheer-reveal space-y-5">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-sm font-bold text-[var(--c-ink-soft)]">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex items-center gap-1.5 text-sm font-bold text-[var(--c-ink-soft)]"
+        >
           <ArrowLeft size={18} /> 데시벨 측정하기
         </button>
         <div className="flex items-center gap-2">
-          <Pill color={status === "live" ? "var(--c-win)" : "var(--c-primary)"} bg={status === "live" ? "var(--c-win-soft)" : "var(--c-primary-50)"}>
-            {status === "live" ? "🎙️ 마이크 측정 중" : status === "requesting" ? "마이크 권한 요청…" : "시뮬레이션 모드"}
+          <Pill
+            color={status === "live" ? "var(--c-win)" : "var(--c-primary)"}
+            bg={status === "live" ? "var(--c-win-soft)" : "var(--c-primary-50)"}
+          >
+            {status === "live"
+              ? "🎙️ 마이크 측정 중"
+              : status === "requesting"
+                ? "마이크 권한 요청…"
+                : "시뮬레이션 모드"}
           </Pill>
           <span className="rounded-full bg-[var(--c-ink)] px-3 py-1 font-mono text-sm font-bold text-white">
             00:{ss === "00" && mm === "00" ? "00" : ss}
@@ -378,21 +493,36 @@ function Measuring({
               <div className="mb-2 flex items-center gap-2 text-center text-xs font-bold text-[var(--c-ink-soft)]">
                 <Mascot size="sm" /> 응원 소리로 데시벨을 높여보세요!
               </div>
-              <DecibelMeter db={db} active size={220} label={hitTarget ? "엄청난 응원이에요! 🔥" : "조금만 더 크게!"} />
+              <DecibelMeter
+                db={db}
+                active
+                size={220}
+                label={hitTarget ? "엄청난 응원이에요! 🔥" : "조금만 더 크게!"}
+              />
               <div className="mt-3 flex items-center gap-4">
                 <div className="text-center">
-                  <p className="text-[11px] font-bold text-[var(--c-muted)]">목표</p>
-                  <p className="text-base font-black text-[var(--c-primary)]">{TARGET_DB}dB+</p>
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">
+                    목표
+                  </p>
+                  <p className="text-base font-black text-[var(--c-primary)]">
+                    {TARGET_DB}dB+
+                  </p>
                 </div>
                 <div className="h-7 w-px bg-[var(--c-line)]" />
                 <div className="text-center">
-                  <p className="text-[11px] font-bold text-[var(--c-muted)]">내 최고</p>
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">
+                    내 최고
+                  </p>
                   <p className="text-base font-black">{peak.toFixed(1)}dB</p>
                 </div>
                 <div className="h-7 w-px bg-[var(--c-line)]" />
                 <div className="text-center">
-                  <p className="text-[11px] font-bold text-[var(--c-muted)]">순위</p>
-                  <p className="text-base font-black text-[var(--c-gold)]">{myRank}위</p>
+                  <p className="text-[11px] font-bold text-[var(--c-muted)]">
+                    순위
+                  </p>
+                  <p className="text-base font-black text-[var(--c-gold)]">
+                    {myRank}위
+                  </p>
                 </div>
               </div>
             </div>
@@ -405,10 +535,20 @@ function Measuring({
 }
 
 /* ---------------- Result ---------------- */
-function Result({ myPeak, onAgain, onBack }: { myPeak: number; onAgain: () => void; onBack: () => void }) {
+function Result({
+  myPeak,
+  onAgain,
+  onBack,
+}: {
+  myPeak: number
+  onAgain: () => void
+  onBack: () => void
+}) {
   // 내 기록 반영해 최종 순위 계산
   const standings = useMemo(() => {
-    const list = BATTLE_PLAYERS.map((p) => (p.me ? { ...p, peakDb: Math.max(p.peakDb, myPeak || p.peakDb) } : p))
+    const list = BATTLE_PLAYERS.map((p) =>
+      p.me ? { ...p, peakDb: Math.max(p.peakDb, myPeak || p.peakDb) } : p,
+    )
     return [...list].sort((a, b) => b.peakDb - a.peakDb)
   }, [myPeak])
 
@@ -429,13 +569,21 @@ function Result({ myPeak, onAgain, onBack }: { myPeak: number; onAgain: () => vo
       {/* 화면 플래시 + 폭죽 */}
       <div className="pointer-events-none fixed inset-0 z-10 cheer-flash bg-white" />
       <Confetti count={120} />
-      <div className="pointer-events-none absolute left-1/2 top-24 z-0 size-64 -translate-x-1/2 rounded-full cheer-burst" style={{ background: "radial-gradient(circle, rgba(246,185,59,.6), transparent 70%)" }} />
+      <div
+        className="pointer-events-none absolute left-1/2 top-24 z-0 size-64 -translate-x-1/2 rounded-full cheer-burst"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(246,185,59,.6), transparent 70%)",
+        }}
+      />
 
       <div className="relative z-20 text-center">
         <h1 className="cheer-title-in text-4xl font-black tracking-tight">
           <span className="cheer-shine">🏁 데시벨 대결 종료!</span>
         </h1>
-        <p className="mt-2 text-sm font-semibold text-[var(--c-ink-soft)]">가장 크게 응원한 TOP 3에게 포인트가 지급됐어요 🎉</p>
+        <p className="mt-2 text-sm font-semibold text-[var(--c-ink-soft)]">
+          가장 크게 응원한 TOP 3에게 포인트가 지급됐어요 🎉
+        </p>
       </div>
 
       <div className="relative z-20 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
@@ -443,18 +591,46 @@ function Result({ myPeak, onAgain, onBack }: { myPeak: number; onAgain: () => vo
         <SectionCard>
           <div className="flex items-end justify-center gap-3 pt-8">
             {podiumOrder.map((p) => {
-              const rank = p.userId === top3[0].userId ? 1 : p.userId === top3[1].userId ? 2 : 3
+              const rank =
+                p.userId === top3[0].userId
+                  ? 1
+                  : p.userId === top3[1].userId
+                    ? 2
+                    : 3
               const h = rank === 1 ? 160 : rank === 2 ? 122 : 98
-              const ring = rank === 1 ? "var(--c-gold)" : rank === 2 ? "var(--c-silver)" : "var(--c-bronze)"
+              const ring =
+                rank === 1
+                  ? "var(--c-gold)"
+                  : rank === 2
+                    ? "var(--c-silver)"
+                    : "var(--c-bronze)"
               const delay = rank === 1 ? 0.5 : rank === 2 ? 0.2 : 0.35
               return (
-                <div key={p.userId} className="flex w-1/3 flex-col items-center">
-                  <div className="cheer-bounce-in" style={{ animationDelay: `${delay}s` }}>
-                    {rank === 1 && <div className="mb-1 text-center text-2xl cheer-glow">👑</div>}
-                    <Avatar emoji={p.emoji} size={rank === 1 ? 64 : 48} ring={ring} />
+                <div
+                  key={p.userId}
+                  className="flex w-1/3 flex-col items-center"
+                >
+                  <div
+                    className="cheer-bounce-in"
+                    style={{ animationDelay: `${delay}s` }}
+                  >
+                    {rank === 1 && (
+                      <div className="mb-1 text-center text-2xl cheer-glow">
+                        👑
+                      </div>
+                    )}
+                    <Avatar
+                      emoji={p.emoji}
+                      size={rank === 1 ? 64 : 48}
+                      ring={ring}
+                    />
                   </div>
-                  <p className="mt-2 truncate text-sm font-extrabold">{p.nickname}</p>
-                  <p className="text-sm font-black" style={{ color: ring }}>{p.peakDb.toFixed(1)}dB</p>
+                  <p className="mt-2 truncate text-sm font-extrabold">
+                    {p.nickname}
+                  </p>
+                  <p className="text-sm font-black" style={{ color: ring }}>
+                    {p.peakDb.toFixed(1)}dB
+                  </p>
                   <div
                     className="cheer-rise mt-2 flex w-full items-start justify-center rounded-t-2xl pt-3 text-2xl font-black"
                     style={{
@@ -475,10 +651,13 @@ function Result({ myPeak, onAgain, onBack }: { myPeak: number; onAgain: () => vo
         {/* my record + rewards */}
         <div className="space-y-5">
           <SectionCard className="relative overflow-hidden text-center">
-            <div className="pointer-events-none absolute -right-3 -top-3 text-6xl opacity-10">📣</div>
+            <div className="pointer-events-none absolute -right-3 -top-3 text-6xl opacity-10">
+              📣
+            </div>
             <p className="text-xs font-bold text-[var(--c-muted)]">내 기록</p>
             <p className="mt-1 text-5xl font-black text-[var(--c-primary)]">
-              {myDbCount.toFixed(1)}<span className="text-xl">dB</span>
+              {myDbCount.toFixed(1)}
+              <span className="text-xl">dB</span>
             </p>
             <Pill className="mx-auto mt-2">상위 {myPercentile}%</Pill>
           </SectionCard>
@@ -494,8 +673,12 @@ function Result({ myPeak, onAgain, onBack }: { myPeak: number; onAgain: () => vo
                 >
                   <RankBadge rank={i + 1} />
                   <Avatar emoji={p.emoji} size={28} />
-                  <span className="flex-1 truncate text-sm font-bold">{p.nickname}</span>
-                  <span className="font-black text-[var(--c-primary)]">+{BATTLE_REWARDS[i]}P</span>
+                  <span className="flex-1 truncate text-sm font-bold">
+                    {p.nickname}
+                  </span>
+                  <span className="font-black text-[var(--c-primary)]">
+                    +{BATTLE_REWARDS[i]}P
+                  </span>
                 </li>
               ))}
             </ul>
