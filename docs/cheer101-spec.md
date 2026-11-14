@@ -57,10 +57,10 @@ UserSetting {
 ```
 Team {
   id        PK
-  name      string   // "아스널"
-  fullName  string   // "아스널 FC"
+  name      string   // "LG"
+  fullName  string   // "LG 트윈스"
   logoUrl   string
-  league    string   // "프리미어리그"
+  league    string   // "KBO리그"
 }
 ```
 
@@ -186,7 +186,7 @@ Fortune {
   teamId      FK
   date        date              // 경기 당일
   fortuneText string            // "흐름이 좋은 날이에요! ..."
-  cheerTip    string            // "후반 교체 타이밍을 주목하세요"
+  cheerTip    string            // "7회 이후 불펜 운용을 주목하세요"
   luckScore   int               // 0~100
   UNIQUE(matchId, teamId, date)
 }
@@ -263,7 +263,7 @@ Fortune {
   "totalPoints": 3820,
   "stats": { "total": 42, "win": 28, "draw": 3, "lose": 13,
              "winRate": 0.68, "loseRate": 0.32 },
-  "teams": [{ "id": 3, "name": "아스널" }, { "id": 4, "name": "토트넘" }]
+  "teams": [{ "id": 3, "name": "LG" }, { "id": 4, "name": "두산" }]
 }
 ```
 
@@ -357,8 +357,8 @@ Fortune {
 ```json
 {
   "matchId": 100, "teamId": 3,
-  "fortuneText": "흐름이 좋은 날이에요! 전반에 기선제압하면 승리 확률이 높아요",
-  "cheerTip": "후반 교체 타이밍을 주목하세요",
+  "fortuneText": "흐름이 좋은 날이에요! 초반에 선취점을 뽑으면 승리 확률이 높아요",
+  "cheerTip": "7회 이후 불펜 운용을 주목하세요",
   "luckScore": 78
 }
 ```
@@ -397,7 +397,7 @@ Fortune {
 
 ## 7. 데모 시나리오 (심사용 3분)
 
-1. 캘린더에서 오늘 경기(토트넘 vs 아스널) 선택 → 아스널 응원 설정
+1. 캘린더에서 오늘 경기(두산 vs LG) 선택 → LG 응원 설정
 2. 초대장 → 커뮤니티 입장 → 데시벨 대결 시작, 다 같이 소리 질러 측정
 3. TOP3 + 포인트 지급 화면
 4. `admin/finish`로 경기 종료 발동 → 승리 결과·포인트·요정 갱신

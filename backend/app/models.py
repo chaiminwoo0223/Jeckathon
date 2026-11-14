@@ -1,7 +1,9 @@
+import enum
 import uuid
 from datetime import UTC, datetime
 
 from pydantic import EmailStr
+from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -124,3 +126,59 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# --- BE-1 ---
+class MatchStatus(enum.StrEnum):
+    SCHEDULED = "SCHEDULED"
+    LIVE = "LIVE"
+    FINISHED = "FINISHED"
+
+
+class TeamBase(SQLModel):
+    name: str = Field(max_length=100)  # "LG"
+    full_name: str = Field(max_length=255)  # "LG 트윈스"
+    logo_url: str = Field(default="", max_length=500)
+    league: str = Field(max_length=100)  # "KBO리그"
+
+
+class Team(TeamBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+
+class TeamPublic(TeamBase):
+    id: uuid.UUID
+
+
+class TeamsPublic(SQLModel):
+    data: list[TeamPublic]
+    count: int
+
+
+class MatchBase(SQLModel):
+    league: str = Field(max_length=100)
+    kickoff_at: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
+    status: MatchStatus = Field(default=MatchStatus.SCHEDULED)
+    home_score: int | None = None  # 종료 시 채워짐
+    away_score: int | None = None
+    finished_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class Match(MatchBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    home_team_id: uuid.UUID = Field(foreign_key="team.id", nullable=False, index=True)
+    away_team_id: uuid.UUID = Field(foreign_key="team.id", nullable=False, index=True)
+
+
+class MatchPublic(MatchBase):
+    id: uuid.UUID
+    home_team_id: uuid.UUID
+    away_team_id: uuid.UUID
+
+
+class MatchesPublic(SQLModel):
+    data: list[MatchPublic]
+    count: int
