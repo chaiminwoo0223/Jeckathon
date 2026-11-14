@@ -706,7 +706,12 @@ function CheerDialog({
         onClick={onClose}
         className="absolute inset-0 bg-black/40"
       />
-      <div className="cheer-pop relative z-10 w-full max-w-sm overflow-hidden rounded-[26px] bg-[var(--c-surface)] shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cheer-dialog-title"
+        className="cheer-pop relative z-10 w-full max-w-sm overflow-hidden rounded-[26px] bg-[var(--c-surface)] shadow-2xl"
+      >
         <div className="relative h-28 cheer-hero">
           <button
             type="button"
@@ -718,7 +723,10 @@ function CheerDialog({
           </button>
         </div>
         <div className="p-6">
-          <h3 className="text-center text-lg font-black">
+          <h3
+            id="cheer-dialog-title"
+            className="text-center text-lg font-black"
+          >
             {match.away_team.name}{" "}
             <span className="text-[var(--c-muted)]">@</span>{" "}
             {match.home_team.name}
@@ -739,6 +747,7 @@ function CheerDialog({
                 <button
                   key={t.id}
                   type="button"
+                  aria-pressed={on}
                   onClick={() => setPicked(t.id)}
                   className={cn(
                     "relative flex flex-col items-center gap-2 rounded-2xl border-2 p-4 transition-all",
