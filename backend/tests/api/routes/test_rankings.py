@@ -193,3 +193,51 @@ def test_ranking_limit_and_validation(client: TestClient, db: Session) -> None:
     assert r.status_code == 422
     r = client.get(f"{API}/rankings/victory", params={"date": "not-a-date"})
     assert r.status_code == 422
+
+
+def test_ranking_judges_fairy_by_cumulative_records_like_me(
+    client: TestClient, db: Session
+) -> None:
+    day = _new_day()
+    earlier = [_match_on(db, day - timedelta(days=i)) for i in (1, 2, 3)]
+    today = _match_on(db, day)
+    later = _match_on(db, day + timedelta(days=1))
+
+    # 이전에 3패, 오늘 1승 → 누적 1승3패(패배율 0.75): 오늘만 보면 승리요정이지만 패배요정이다
+    loser = Fan(client)
+    for m in earlier:
+        _record(db, loser, m, CheerResult.LOSE)
+    _record(db, loser, today, CheerResult.WIN)
+    _record(db, loser, later, CheerResult.WIN)  # 그날 이후 기록은 세지 않는다
+
+    # 이전에 1승1패, 오늘 1승 → 누적 2승1패(승률 0.67) 승리요정
+    streak = Fan(client)
+    _record(db, streak, earlier[0], CheerResult.WIN)
+    _record(db, streak, earlier[1], CheerResult.LOSE)
+    _record(db, streak, today, CheerResult.WIN)
+
+    victory = {e["user_id"]: e for e in _ranking(client, "victory", day)["data"]}
+    defeat = {e["user_id"]: e for e in _ranking(client, "defeat", day)["data"]}
+    assert str(loser.id) not in victory
+    assert defeat[str(loser.id)]["rate"] == 0.75
+    assert defeat[str(loser.id)]["played"] == 4
+    assert victory[str(streak.id)]["rate"] == 0.67
+    assert victory[str(streak.id)]["played"] == 3
+
+
+def test_ranking_matches_me_fairy_for_today(client: TestClient, db: Session) -> None:
+    today = datetime.now(KST).date()
+    past = [_match_on(db, today - timedelta(days=i)) for i in (1, 2)]
+    now_match = _match_on(db, today)
+    fan = Fan(client)
+    _record(db, fan, past[0], CheerResult.LOSE)
+    _record(db, fan, past[1], CheerResult.LOSE)
+    _record(db, fan, now_match, CheerResult.WIN)  # 누적 1승2패 → 패배요정
+
+    me = client.get(f"{API}/me", headers=fan.headers).json()
+    assert me["fairy_type"] == "DEFEAT"
+    ids = {e["user_id"] for e in _ranking(client, "defeat", today)["data"]}
+    assert str(fan.id) in ids
+    assert str(fan.id) not in {
+        e["user_id"] for e in _ranking(client, "victory", today)["data"]
+    }

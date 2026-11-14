@@ -674,7 +674,7 @@ class RankingEntryPublic(SQLModel):
     fairy_label: str  # "승리요정 {nickname}" (§3.2)
     profile_image_url: str | None
     rate: float  # 승률(승리요정 랭킹) 또는 패배율(패배요정 랭킹), 0~1
-    played: int  # 그날 확정된 경기 수(승+무+패)
+    played: int  # 누적 확정 경기 수(승+무+패, 그날까지)
     win: int
     draw: int
     lose: int

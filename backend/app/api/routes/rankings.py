@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
 from app.api.deps import SessionDep
 from app.models import (
@@ -30,16 +30,19 @@ def _day_range(day: date) -> tuple[datetime, datetime]:
 
 
 def _ranking(session: Session, kind: FairyType, day: date, limit: int) -> RankingPublic:
-    """그날(KST) 킥오프한 경기의 확정된 응원 기록으로 요정 랭킹을 만든다.
+    """그날(KST) 확정 기록이 있는 유저의 요정 랭킹을 만든다.
 
-    - 후보: 그날 확정 기록이 있고 랭킹 공개(`ranking_public`, 설정 행이 없으면 공개)인 유저.
-    - 승률·패배율·요정 판정은 §3.1·§3.2 함수(`services/stats.py`)를 그대로 쓴다.
-    - 그 종류의 요정인 유저만 올린다(승리요정이 우선이라 승률 60% 이상은 패배요정 랭킹에 없다).
+    - 후보: 그날 킥오프한 경기에 확정된 응원 기록이 있고 랭킹 공개(`ranking_public`,
+      설정 행이 없으면 공개)인 유저.
+    - 승률·패배율·요정 판정은 그날 끝까지의 **누적** 확정 기록으로 센다. `/me`·커뮤니티
+      멤버와 같은 기준(§3.2)이라 오늘 날짜면 마이페이지의 요정과 항상 같다.
+    - 판정과 비율은 `services/stats.py`(§3.1·§3.2)를 그대로 쓴다. 그 종류의 요정만 올린다
+      (승리요정이 우선이라 승률 60% 이상은 패배요정 랭킹에 없다).
     - 정렬: 비율 내림차순 → 경기 수 내림차순 → user_id(동률일 때 순서가 흔들리지 않게).
     """
     start, end = _day_range(day)
-    rows = session.exec(
-        select(CheerRecord.user_id, CheerRecord.result)
+    participants = session.exec(
+        select(CheerRecord.user_id)
         .join(Match, col(Match.id) == col(CheerRecord.match_id))
         .outerjoin(UserSetting, col(UserSetting.user_id) == col(CheerRecord.user_id))
         .where(
@@ -48,13 +51,23 @@ def _ranking(session: Session, kind: FairyType, day: date, limit: int) -> Rankin
             CheerRecord.result != CheerResult.PENDING,
             col(UserSetting.ranking_public).is_not(False),
         )
+        .distinct()
     ).all()
 
-    counts: dict[uuid.UUID, dict[CheerResult, int]] = {}
-    for user_id, result in rows:
-        result = CheerResult(result)
-        per_user = counts.setdefault(user_id, {})
-        per_user[result] = per_user.get(result, 0) + 1
+    counts: dict[uuid.UUID, dict[CheerResult, int]] = {uid: {} for uid in participants}
+    if participants:
+        rows = session.exec(
+            select(CheerRecord.user_id, CheerRecord.result, func.count())
+            .join(Match, col(Match.id) == col(CheerRecord.match_id))
+            .where(
+                col(CheerRecord.user_id).in_(participants),
+                col(Match.kickoff_at) < end,
+                CheerRecord.result != CheerResult.PENDING,
+            )
+            .group_by(col(CheerRecord.user_id), col(CheerRecord.result))
+        ).all()
+        for user_id, result, n in rows:
+            counts[user_id][CheerResult(result)] = n
 
     candidates: list[tuple[uuid.UUID, float, int, int, int]] = []
     for user_id, c in counts.items():
