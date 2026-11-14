@@ -24,7 +24,7 @@ export const Route = createFileRoute("/cheer")({
 const NAV = [
   { to: "/cheer", label: "홈", icon: Home, exact: true },
   { to: "/cheer/calendar", label: "캘린더", icon: CalendarDays },
-  { to: "/cheer/community", label: "커뮤니티", icon: Trophy },
+  { to: "/cheer/community", label: "경기 관람", icon: Trophy },
   { to: "/cheer/mypage", label: "마이페이지", icon: User },
   { to: "/cheer/settings", label: "설정", icon: Settings },
 ]

@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { Check, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { Check, ChevronLeft, ChevronRight, Ticket, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Pill, SectionCard, SectionTitle, TeamLogo } from "@/cheer/components/primitives"
-import { formatKDate, formatTime, type Match, MATCH_DAYS, MATCHES, TODAY } from "@/cheer/data/mock"
+import { formatKDate, formatTime, type Match, MATCH_DAYS, MATCHES, type Team, TODAY } from "@/cheer/data/mock"
+import { applyToMatch, useAppliedMatches } from "@/cheer/hooks/use-applied-matches"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/cheer/calendar")({
@@ -15,8 +16,11 @@ const MONTH = 10 // 0-indexed → 11월
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 
 function CalendarPage() {
+  const navigate = useNavigate()
   const [selected, setSelected] = useState(TODAY)
   const [cheerMatch, setCheerMatch] = useState<Match | null>(null)
+  const applied = useAppliedMatches()
+  const appliedIds = useMemo(() => new Set(applied.map((a) => a.match.id)), [applied])
 
   const cells = useMemo(() => {
     const first = new Date(YEAR, MONTH, 1)
@@ -127,6 +131,11 @@ function CalendarPage() {
                       </p>
                       <p className="text-xs text-[var(--c-muted)]">{m.league}</p>
                     </div>
+                    {appliedIds.has(m.id) && (
+                      <Pill color="var(--c-win)" bg="var(--c-win-soft)">
+                        <Ticket size={12} /> 신청됨
+                      </Pill>
+                    )}
                     <span className="shrink-0 text-sm font-black text-[var(--c-primary)]">{formatTime(m.kickoffAt)}</span>
                   </button>
                 </li>
@@ -141,7 +150,11 @@ function CalendarPage() {
           match={cheerMatch}
           onClose={() => setCheerMatch(null)}
           onConfirm={(team) => {
-            toast.success(`${team} 응원팀 설정 완료! 📣`)
+            applyToMatch(cheerMatch.id, team.id)
+            toast.success(`${team.name} 응원 신청 완료! 🎟️`, {
+              description: "경기 관람 탭에서 입장 초대장을 확인하세요",
+              action: { label: "보러가기", onClick: () => navigate({ to: "/cheer/community" }) },
+            })
             setCheerMatch(null)
           }}
         />
@@ -157,7 +170,7 @@ function CheerDialog({
 }: {
   match: Match
   onClose: () => void
-  onConfirm: (teamName: string) => void
+  onConfirm: (team: Team) => void
 }) {
   const [picked, setPicked] = useState<number | null>(null)
   const teams = [match.home, match.away]
@@ -212,10 +225,10 @@ function CheerDialog({
           <button
             type="button"
             disabled={picked === null}
-            onClick={() => onConfirm(teams.find((t) => t.id === picked)!.name)}
+            onClick={() => onConfirm(teams.find((t) => t.id === picked)!)}
             className="mt-6 w-full rounded-2xl bg-[var(--c-primary)] py-3.5 text-sm font-extrabold text-white transition-all hover:bg-[var(--c-primary-600)] disabled:opacity-40"
           >
-            응원팀 설정 완료
+            응원 신청하기
           </button>
         </div>
       </div>
