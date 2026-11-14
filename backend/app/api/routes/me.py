@@ -1,0 +1,154 @@
+import uuid
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from sqlmodel import Session, col, select
+
+from app.api.deps import CurrentUser, SessionDep
+from app.models import (
+    MeProfile,
+    MeSummary,
+    ProfileUpdate,
+    Team,
+    TeamPublic,
+    TeamsPublic,
+    User,
+    UserSetting,
+    UserSettingPublic,
+    UserSettingUpdate,
+    UserTeam,
+    UserTeamAdd,
+)
+from app.services import stats as stats_service
+
+router = APIRouter(prefix="/me", tags=["me"])
+
+
+def to_profile(user: User) -> MeProfile:
+    return MeProfile(
+        id=user.id,
+        nickname=user.display_nickname,
+        bio=user.bio,
+        profile_image_url=user.profile_image_url,
+        level=user.level,
+        total_points=user.total_points,
+    )
+
+
+def _my_teams(session: Session, user: User) -> TeamsPublic:
+    teams = session.exec(
+        select(Team)
+        .join(UserTeam, col(UserTeam.team_id) == col(Team.id))
+        .where(UserTeam.user_id == user.id)
+        .order_by(col(Team.name))
+    ).all()
+    return TeamsPublic(
+        data=[TeamPublic.model_validate(t) for t in teams], count=len(teams)
+    )
+
+
+def _get_or_create_setting(session: Session, user: User) -> UserSetting:
+    setting = session.get(UserSetting, user.id)
+    if setting is None:
+        setting = UserSetting(user_id=user.id)
+        session.add(setting)
+        session.commit()
+        session.refresh(setting)
+    return setting
+
+
+@router.get("", response_model=MeSummary)
+def read_me(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    내 프로필 + 통계 요약. 응원 기록(CheerRecord)이 생기기 전까지 stats는 전부 0이다.
+    """
+    stats = stats_service.build_stats(win=0, draw=0, lose=0)
+    fairy = stats_service.fairy_type(win=stats.win, lose=stats.lose)
+    return MeSummary(
+        **to_profile(current_user).model_dump(),
+        fairy_type=fairy,
+        fairy_label=stats_service.fairy_label(fairy, current_user.display_nickname),
+        stats=stats,
+        teams=_my_teams(session, current_user).data,
+    )
+
+
+@router.patch("/profile", response_model=MeProfile)
+def update_profile(
+    session: SessionDep, current_user: CurrentUser, profile_in: ProfileUpdate
+) -> Any:
+    """
+    닉네임·한 줄 소개·프로필 이미지 수정. 보내지 않은 필드는 그대로 둔다.
+    """
+    data = profile_in.model_dump(exclude_unset=True)
+    # 닉네임·소개는 비울 수 없다. null은 "변경 없음"으로 본다. 이미지 URL만 null로 지울 수 있다.
+    for key in ("nickname", "bio"):
+        if data.get(key) is None:
+            data.pop(key, None)
+    current_user.sqlmodel_update(data)
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return to_profile(current_user)
+
+
+@router.get("/settings", response_model=UserSettingPublic)
+def read_settings(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    설정 조회. 한 번도 저장한 적 없으면 기본값으로 만들어 돌려준다.
+    """
+    return _get_or_create_setting(session, current_user)
+
+
+@router.patch("/settings", response_model=UserSettingPublic)
+def update_settings(
+    session: SessionDep, current_user: CurrentUser, settings_in: UserSettingUpdate
+) -> Any:
+    """
+    설정 토글 일부 업데이트.
+    """
+    setting = _get_or_create_setting(session, current_user)
+    data = settings_in.model_dump(exclude_unset=True, exclude_none=True)
+    setting.sqlmodel_update(data)
+    session.add(setting)
+    session.commit()
+    session.refresh(setting)
+    return setting
+
+
+@router.get("/teams", response_model=TeamsPublic)
+def read_my_teams(session: SessionDep, current_user: CurrentUser) -> Any:
+    """
+    응원하는 팀 목록.
+    """
+    return _my_teams(session, current_user)
+
+
+@router.post("/teams", response_model=TeamsPublic)
+def add_my_team(
+    session: SessionDep, current_user: CurrentUser, team_in: UserTeamAdd
+) -> Any:
+    """
+    응원팀 추가. 이미 추가한 팀이면 그대로 둔다. 갱신된 목록을 돌려준다.
+    """
+    if session.get(Team, team_in.team_id) is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if session.get(UserTeam, (current_user.id, team_in.team_id)) is None:
+        session.add(UserTeam(user_id=current_user.id, team_id=team_in.team_id))
+        session.commit()
+    return _my_teams(session, current_user)
+
+
+@router.delete("/teams/{team_id}", response_model=TeamsPublic)
+def remove_my_team(
+    session: SessionDep, current_user: CurrentUser, team_id: uuid.UUID
+) -> Any:
+    """
+    응원팀 제거. 갱신된 목록을 돌려준다.
+    """
+    link = session.get(UserTeam, (current_user.id, team_id))
+    if link is None:
+        raise HTTPException(status_code=404, detail="Team not in my teams")
+    session.delete(link)
+    session.commit()
+    return _my_teams(session, current_user)

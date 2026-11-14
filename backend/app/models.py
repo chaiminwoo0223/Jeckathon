@@ -2,8 +2,9 @@ import enum
 import uuid
 from datetime import UTC, datetime
 from datetime import date as date_type
+from typing import Annotated
 
-from pydantic import EmailStr
+from pydantic import EmailStr, StringConstraints
 from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -17,7 +18,6 @@ class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
-    full_name: str | None = Field(default=None, max_length=255)
 
 
 # Properties to receive via API on creation
@@ -28,7 +28,6 @@ class UserCreate(UserBase):
 class UserRegister(SQLModel):
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
-    full_name: str | None = Field(default=None, max_length=255)
 
 
 # Properties to receive via API on update, all are optional
@@ -36,12 +35,10 @@ class UserUpdate(SQLModel):
     email: EmailStr | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     is_superuser: bool | None = None
-    full_name: str | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class UserUpdateMe(SQLModel):
-    full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
 
 
@@ -56,6 +53,21 @@ class User(UserBase, table=True):
     hashed_password: str
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
     items: list[Item] = Relationship(back_populates="owner", cascade_delete=True)
+    # CHEER 101 (BE-1). 기존 행이 있으므로 server_default가 필요하다.
+    nickname: str = Field(
+        default="", max_length=50, sa_column_kwargs={"server_default": ""}
+    )
+    bio: str = Field(
+        default="", max_length=200, sa_column_kwargs={"server_default": ""}
+    )
+    profile_image_url: str | None = Field(default=None, max_length=500)
+    level: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
+    total_points: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
+
+    @property
+    def display_nickname(self) -> str:
+        """닉네임이 비어 있으면(관리자 등) 이메일 앞부분을 쓴다."""
+        return self.nickname or self.email.split("@")[0]
 
 
 # Properties to return via API, id is always required
@@ -207,3 +219,117 @@ class MatchesToday(SQLModel):
     date: date_type
     data: list[MatchDetail]
     count: int
+
+
+class UserSettingBase(SQLModel):
+    notify_match_schedule: bool = True  # 경기 일정 알림
+    notify_community_invite: bool = True  # 커뮤니티 초대 알림
+    notify_ranking_reward: bool = True  # 랭킹/보상 알림
+    notify_service: bool = False  # 서비스 소식/이벤트
+    auto_join_community: bool = True  # 경기 당일 자동 입장
+    mic_permission: bool = False  # 데시벨 마이크 권한
+    ranking_public: bool = True  # 랭킹 공개 여부
+
+
+class UserSetting(UserSettingBase, table=True):
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", primary_key=True, ondelete="CASCADE"
+    )
+
+
+class UserSettingPublic(UserSettingBase):
+    pass
+
+
+class UserSettingUpdate(SQLModel):
+    notify_match_schedule: bool | None = None
+    notify_community_invite: bool | None = None
+    notify_ranking_reward: bool | None = None
+    notify_service: bool | None = None
+    auto_join_community: bool | None = None
+    mic_permission: bool | None = None
+    ranking_public: bool | None = None
+
+
+class UserTeam(SQLModel, table=True):
+    """응원하는 팀 (User : Team = M : N)."""
+
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", primary_key=True, ondelete="CASCADE"
+    )
+    team_id: uuid.UUID = Field(
+        foreign_key="team.id", primary_key=True, ondelete="CASCADE"
+    )
+
+
+class UserTeamAdd(SQLModel):
+    team_id: uuid.UUID
+
+
+class ProfileUpdate(SQLModel):
+    nickname: str | None = Field(default=None, min_length=1, max_length=50)
+    bio: str | None = Field(default=None, max_length=200)
+    profile_image_url: str | None = Field(default=None, max_length=500)
+
+
+class FairyType(enum.StrEnum):
+    VICTORY = "VICTORY"
+    DEFEAT = "DEFEAT"
+    NEUTRAL = "NEUTRAL"
+
+
+class StatsPublic(SQLModel):
+    total: int
+    win: int
+    draw: int
+    lose: int
+    win_rate: float
+    lose_rate: float
+
+
+class MeProfile(SQLModel):
+    id: uuid.UUID
+    nickname: str
+    bio: str
+    profile_image_url: str | None
+    level: int
+    total_points: int
+
+
+class MeSummary(MeProfile):
+    fairy_type: FairyType
+    fairy_label: str
+    stats: StatsPublic
+    teams: list[TeamPublic]
+
+
+USERNAME_PATTERN = r"^[A-Za-z0-9_]{4,20}$"
+LOGIN_ID_DOMAIN = (
+    "users.cheer101.example.com"  # 예약 도메인: 메일이 실제로 나가지 않는다
+)
+
+
+def login_id_to_email(login_id: str) -> str:
+    """로그인 아이디는 별도 칼럼 없이 email 칼럼에 합성해 저장한다(대소문자 구분 없음)."""
+    return f"{login_id.lower()}@{LOGIN_ID_DOMAIN}"
+
+
+Username = Annotated[str, StringConstraints(pattern=USERNAME_PATTERN)]
+
+
+class AuthCredentials(SQLModel):
+    """가입·로그인 공용. 아이디는 영문·숫자·밑줄 4~20자이고 대소문자를 구분하지 않는다."""
+
+    username: Username
+    password: str = Field(min_length=4, max_length=128)
+
+
+class AuthResponse(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: MeProfile
+
+
+class UsernameCheck(SQLModel):
+    username: str
+    available: bool
