@@ -1,0 +1,74 @@
+# Home server deployment (cheer101.infoedu.co.kr).
+# The backend image also serves the built frontend, so only db + backend run.
+# No ports are published: the home server's Caddy reaches the backend
+# through the shared `caddy_default` network (alias `jeckathon-backend`).
+# Secrets come from an env file on the server, never from this repo.
+name: jeckathon
+
+x-backend-env: &backend-env
+  PROJECT_NAME: CHEER 101
+  SECRET_KEY: ${SECRET_KEY:?Variable not set}
+  FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Variable not set}
+  FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Variable not set}
+  DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
+  FRONTEND_HOST: https://${DOMAIN:?Variable not set}
+  AI_API_KEY: ${AI_API_KEY:-}
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Variable not set}
+      POSTGRES_DB: app
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      retries: 10
+      start_period: 20s
+      timeout: 5s
+
+  # One-shot: migrations + seed (backend/scripts/prestart.sh), then exits.
+  prestart:
+    image: jeckathon-backend:latest
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+      labels:
+        jeckathon.image: backend
+    command: bash scripts/prestart.sh
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *backend-env
+
+  backend:
+    image: jeckathon-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
+    environment: *backend-env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      default:
+      caddy:
+        aliases:
+          - jeckathon-backend
+
+networks:
+  caddy:
+    external: true
+    name: caddy_default
+
+volumes:
+  db-data:
