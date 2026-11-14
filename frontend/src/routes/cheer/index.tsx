@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ChevronRight, MessageCircle } from "lucide-react"
-import { Mascot } from "@/cheer/components/mascot"
 import { Avatar, Pill, RankBadge, SectionCard, SectionTitle } from "@/cheer/components/primitives"
 import {
   COMMUNITY_FEED,
@@ -40,10 +39,6 @@ function HomePage() {
             >
               응원하러 가기 <ChevronRight size={16} />
             </Link>
-          </div>
-          <div className="relative shrink-0">
-            <span className="absolute -left-4 top-0 text-sm font-bold text-white/90">오늘도 힘내요!</span>
-            <Mascot size="lg" float flag />
           </div>
         </div>
         <div className="pointer-events-none absolute -right-6 -top-10 size-40 rounded-full bg-white/10 blur-2xl" />
