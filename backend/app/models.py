@@ -666,6 +666,27 @@ class UserBadgesPublic(SQLModel):
     count: int
 
 
+# --- BE-2 (랭킹) ---
+class RankingEntryPublic(SQLModel):
+    rank: int
+    user_id: uuid.UUID
+    nickname: str
+    fairy_label: str  # "승리요정 {nickname}" (§3.2)
+    profile_image_url: str | None
+    rate: float  # 승률(승리요정 랭킹) 또는 패배율(패배요정 랭킹), 0~1
+    played: int  # 그날 확정된 경기 수(승+무+패)
+    win: int
+    draw: int
+    lose: int
+
+
+class RankingPublic(SQLModel):
+    date: date_type  # 경기 당일(KST)
+    kind: FairyType  # VICTORY | DEFEAT
+    data: list[RankingEntryPublic]
+    count: int
+
+
 # --- AI ---
 class Fortune(SQLModel, table=True):
     """경기 당일 응원팀 운세(AI 생성 캐시). (경기, 팀, 날짜)당 한 건."""

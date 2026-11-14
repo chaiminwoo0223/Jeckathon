@@ -402,6 +402,15 @@ Player {
 - `rankingPublic=false` 유저는 랭킹에서 제외.
 - 프론트는 2~3초 폴링으로 "실시간" 느낌 연출.
 
+**구현 메모 (BE-2)**
+
+- 로그인 없이 볼 수 있다. 쿼리는 `date`(KST, 생략하면 오늘)와 `limit`(기본 20, 최대 100)이다.
+- 집계 범위는 `date`(KST) 하루에 킥오프한 경기의 **확정된 응원 기록**(PENDING 제외)이다. 누적 통계가 아니라 그날 기록만 본다.
+- 승률·패배율·요정 판정은 §3.1·§3.2의 `services/stats.py` 함수를 그대로 쓴다. 승리요정 랭킹에는 승리요정만, 패배요정 랭킹에는 패배요정만 오른다(둘 다 해당하면 승리요정 우선이라 패배요정 랭킹에는 없다). 중립요정은 어느 쪽에도 없다.
+- 정렬은 비율(승률 또는 패배율) 내림차순 → 경기 수 내림차순 → `user_id`다. 순위는 1부터 매기고 동률도 번호가 겹치지 않는다.
+- `ranking_public=false`인 유저는 뺀다(설정 행이 없으면 공개로 본다).
+- 응답: `{date, kind: "VICTORY"|"DEFEAT", data: [{rank, user_id, nickname, fairy_label, profile_image_url, rate, played, win, draw, lose}], count}`. `rate`는 소수 둘째 자리까지다.
+
 ### 4.6 데시벨 대결 (소켓 없이 폴링)
 
 | Method | Path | 설명 |
