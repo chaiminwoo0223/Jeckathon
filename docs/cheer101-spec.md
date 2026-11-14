@@ -327,7 +327,7 @@ Fortune {
 | POST | /communities/{id}/join | 입장 (초대장 → 입장). 입장 규칙은 아래 참고 |
 | POST | /communities/{id}/leave | 나가기 |
 | GET | /communities/{id}/members | 멤버 목록 (프로필, 요정 타입) |
-| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음) |
+| WS | /chat/rooms/{roomId}/ws?token={JWT} | 실시간 채팅. 방은 고정 2개(1·2), 서버 메모리에 최근 50개만 보관(DB 저장 없음). 워커 사이 전달은 Postgres LISTEN/NOTIFY |
 
 **입장 규칙**
 

@@ -48,7 +48,7 @@
 - 순서: 같은 방의 모든 사람이 같은 순서로 받는다(4명 동시 전송으로 확인). `sent_at`은 받은 순서대로 증가한다.
 - 입장 직후 그 방의 최근 50개가 먼저 온다. DB에 저장하지 않으므로 서버를 재시작하면 사라진다.
 - 접속자 수(화면의 "14명")는 백엔드에 아직 없다.
-- 백엔드는 워커 1개로 돌아야 한다(`fastapi dev` 또는 `fastapi run --workers 1`). 워커가 여럿이면 같은 방이어도 서로 메시지가 안 보일 수 있다.
+- 워커 수 제한 없음. 배포는 `fastapi run --workers 4`라 연결이 워커 4개에 흩어지는데, 메시지는 Postgres LISTEN/NOTIFY 버스(`backend/app/services/realtime.py`)로 모든 워커에 퍼진다. Redis는 쓰지 않는다. 다른 실시간 기능도 `bus.subscribe`·`bus.publish`를 쓴다(메시지 하나 8000바이트 미만).
 
 ```ts
 const base = (import.meta.env.VITE_API_URL || location.origin).replace(/^http/, "ws")

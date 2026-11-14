@@ -1,5 +1,7 @@
 import asyncio
 from collections import deque
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 
@@ -8,8 +10,17 @@ from sqlmodel import Session
 
 from app.api.deps import get_current_user
 from app.core.db import engine
+from app.services.realtime import bus
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+
+@asynccontextmanager
+async def _lifespan(_app: Any) -> AsyncGenerator[None]:
+    # 워커가 뜰 때부터 LISTEN 해야 그 워커에 첫 접속이 오기 전 메시지도 최근 기록에 남는다
+    await bus.start()
+    yield
+
+
+router = APIRouter(prefix="/chat", tags=["chat"], lifespan=_lifespan)
 
 ROOM_IDS = (1, 2)
 HISTORY_SIZE = 50
@@ -44,8 +55,20 @@ class Room:
                     self.clients.discard(ws)
 
 
-# shortcut: 프로세스 메모리에 방을 둔다. 서버 워커 1개(`fastapi dev`, `--workers 1`)에서만 맞다. 여러 워커가 필요하면 Redis pub/sub로 바꾼다.
+# 방은 워커마다 메모리에 있다. 메시지는 Postgres NOTIFY 버스로 모든 워커에 똑같이 퍼져서
+# 워커 여러 개(`--workers 4`)여도 같은 방이면 같은 메시지를 같은 순서로 본다.
 rooms = {room_id: Room(room_id) for room_id in ROOM_IDS}
+
+
+def _on_chat(msg: dict[str, Any]) -> None:
+    room = rooms.get(msg["room_id"])
+    if room is not None:
+        room.ensure_worker()
+        assert room.queue is not None
+        room.queue.put_nowait(msg)
+
+
+bus.subscribe("chat", _on_chat)
 
 
 @router.websocket("/rooms/{room_id}/ws")
@@ -63,6 +86,7 @@ async def chat_ws(websocket: WebSocket, room_id: int, token: str) -> None:
         await websocket.close(code=1008)
         return
 
+    await bus.start()
     await websocket.accept()
     room.ensure_worker()
     for msg in list(room.history):
@@ -71,15 +95,16 @@ async def chat_ws(websocket: WebSocket, room_id: int, token: str) -> None:
     try:
         while True:
             text = (await websocket.receive_text()).strip()[:MAX_TEXT]
-            if text and room.queue is not None:
-                await room.queue.put(
+            if text:
+                await bus.publish(
+                    "chat",
                     {
                         "room_id": room_id,
                         "user_id": user_id,
                         "name": name,
                         "text": text,
                         "sent_at": datetime.now(UTC).isoformat(),
-                    }
+                    },
                 )
     except WebSocketDisconnect:
         pass
