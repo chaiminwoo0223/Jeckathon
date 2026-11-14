@@ -20,7 +20,14 @@ const SEED: ChatMsg[] = COMMUNITY_FEED.map((m, i) => ({
 }))
 
 // 커뮤니티 실시간 응원 채팅 (로컬 상태 — 소켓 연동 전 데모).
-export function LiveChat({ heightClass = "h-[320px]" }: { heightClass?: string }) {
+// fill=true면 부모 높이를 꽉 채운다 (영상 높이에 맞출 때).
+export function LiveChat({
+  heightClass = "h-[320px]",
+  fill = false,
+}: {
+  heightClass?: string
+  fill?: boolean
+}) {
   const [messages, setMessages] = useState<ChatMsg[]>(SEED)
   const [input, setInput] = useState("")
   const listRef = useRef<HTMLDivElement>(null)
@@ -40,7 +47,7 @@ export function LiveChat({ heightClass = "h-[320px]" }: { heightClass?: string }
   }
 
   return (
-    <SectionCard className="flex flex-col" pad={false}>
+    <SectionCard className={`flex flex-col ${fill ? "h-full" : ""}`} pad={false}>
       <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--c-line)" }}>
         <h3 className="flex items-center gap-1.5 text-[15px] font-black">🔥 실시간 응원 채팅</h3>
         <span className="flex items-center gap-1 text-xs font-bold text-[var(--c-win)]">
@@ -48,7 +55,7 @@ export function LiveChat({ heightClass = "h-[320px]" }: { heightClass?: string }
         </span>
       </div>
 
-      <div ref={listRef} className={`space-y-3 overflow-y-auto px-4 py-3 ${heightClass}`}>
+      <div ref={listRef} className={`space-y-3 overflow-y-auto px-4 py-3 ${fill ? "min-h-[300px] flex-1" : heightClass}`}>
         {messages.map((m) => (
           <div key={m.id} className="flex items-start gap-2.5">
             <Avatar emoji={m.emoji} size={30} ring={m.me ? "var(--c-primary)" : undefined} />

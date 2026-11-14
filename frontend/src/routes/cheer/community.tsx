@@ -334,9 +334,9 @@ function Room({
       {/* live match stream + chat */}
       <div>
         <SectionTitle icon="📺">경기 생중계</SectionTitle>
-        <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
+        <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
           <VideoStream home={match.home} away={match.away} />
-          <LiveChat heightClass="h-[300px]" />
+          <LiveChat fill />
         </div>
       </div>
 
