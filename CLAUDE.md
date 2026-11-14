@@ -36,6 +36,12 @@
 - 채팅을 뺀 실시간은 폴링이다(명세 §0). 프론트는 TanStack Query `refetchInterval: 2000`~`3000`, `retry: 1`. 백엔드는 스케줄러 없이 조회 시점에 상태를 전환한다(대결 지연 정산, 명세 §4.6).
 - 채팅은 같은 FastAPI 앱의 WebSocket 엔드포인트 하나다(별도 소켓 서버 없음). 프론트 연동은 아래 "실시간 채팅 (프론트 연동)"을 따른다.
 
+## 포인트·배지 (프론트 연동)
+
+- 대결 결과 `GET /battles/{id}/result`에 `top3[].points`(그 사람이 받은 포인트)와 `my_points`(내가 받은 포인트, TOP3 밖이면 0)가 생겼다. 포인트는 대결 종료 후 첫 조회 때 서버가 지급한다.
+- 새 엔드포인트: `GET /me/points?page=&size=`(포인트 내역, 최신순, `total_points` 포함), `GET /me/badges`(획득 배지, 최근 순). 응답 형태는 명세 §4.3 "구현 메모 (BE-2)".
+- 이 변경을 받은 뒤 루트에서 `bash scripts/generate-client.sh`로 클라이언트를 다시 만든다.
+
 ## 실시간 채팅 (프론트 연동)
 
 백엔드 구현: `backend/app/api/routes/chat.py`(BE-2). 프론트 `frontend/src/cheer/components/live-chat.tsx`는 아직 로컬 상태 데모라 다른 사람 메시지가 안 온다. 아래대로 붙인다.
