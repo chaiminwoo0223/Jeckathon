@@ -21,12 +21,21 @@ function World({
   inputRef,
   myTeam,
   myNickname,
+  communityId,
+  sayRef,
 }: {
   inputRef: MutableRefObject<MoveInput>
   myTeam: ArenaTeam
   myNickname: string
+  communityId?: string
+  sayRef: MutableRefObject<((text: string) => void) | undefined>
 }) {
-  const { players, me, move } = usePresence(myNickname, myTeam)
+  const { players, me, move, say } = usePresence(
+    myNickname,
+    myTeam,
+    communityId,
+  )
+  sayRef.current = say
   const pos = useRef({ x: me.x, z: me.z, rotation: me.rotation })
   const { camera } = useThree()
   const camTarget = useRef(new THREE.Vector3())
@@ -34,6 +43,9 @@ function World({
 
   useFrame((_, rawDt) => {
     const dt = Math.min(0.05, rawDt)
+    // presence가 내 위치를 크게 옮기면(서버가 정한 시작 위치) 따른다. 한 프레임 이동은 1m보다 작다
+    if (Math.hypot(me.x - pos.current.x, me.z - pos.current.z) > 1)
+      pos.current = { x: me.x, z: me.z, rotation: me.rotation }
     const inp = inputRef.current
     if (inp.x !== 0 || inp.z !== 0) {
       const nx = pos.current.x + inp.x * SPEED * dt
@@ -66,18 +78,27 @@ export function ArenaStage({
   onExit,
   myTeam,
   myNickname = "나",
+  communityId,
 }: {
   onExit: () => void
   myTeam: ArenaTeam
   myNickname?: string
+  communityId?: string
 }) {
   const inputRef = useKeyboardInput()
+  const sayRef = useRef<(text: string) => void>(undefined)
   const [chatOpen, setChatOpen] = useState(true)
   return (
     <div className="cheer-reveal fixed inset-0 z-40 bg-gradient-to-b from-[#bfe3ff] to-[#7fc3f0]">
       <Canvas shadows camera={{ position: [0, 10, 21], fov: 52 }}>
         <fog attach="fog" args={["#bfe3ff", 40, 95]} />
-        <World inputRef={inputRef} myTeam={myTeam} myNickname={myNickname} />
+        <World
+          inputRef={inputRef}
+          myTeam={myTeam}
+          myNickname={myNickname}
+          communityId={communityId}
+          sayRef={sayRef}
+        />
       </Canvas>
 
       {/* HUD */}
@@ -104,7 +125,11 @@ export function ArenaStage({
             >
               <X size={14} />
             </button>
-            <LiveChat heightClass="h-[200px]" />
+            <LiveChat
+              heightClass="h-[200px]"
+              communityId={communityId}
+              onSend={(text) => sayRef.current?.(text)}
+            />
           </div>
         </div>
       ) : (
