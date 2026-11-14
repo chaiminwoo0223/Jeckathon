@@ -10,6 +10,7 @@ from app.api.routes import (
     matches,
     me,
     private,
+    rankings,
     rewards,
     space,
     teams,
@@ -31,6 +32,7 @@ api_router.include_router(communities.router)
 api_router.include_router(communities.match_router)
 api_router.include_router(battles.router)
 api_router.include_router(fortune.router)
+api_router.include_router(rankings.router)
 api_router.include_router(rewards.router)
 api_router.include_router(space.router)
 
