@@ -5,6 +5,7 @@ import { Mascot } from "@/cheer/components/mascot"
 import { SectionCard, TeamLogo } from "@/cheer/components/primitives"
 import { ME } from "@/cheer/data/mock"
 import { type Theme, useTheme } from "@/components/theme-provider"
+import useAuth from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/cheer/settings")({
@@ -12,6 +13,8 @@ export const Route = createFileRoute("/cheer/settings")({
 })
 
 function SettingsPage() {
+  const { user } = useAuth()
+  const displayName = user?.full_name || user?.email?.split("@")[0] || ME.nickname
   const [toggles, setToggles] = useState({
     notifyMatch: true,
     notifyInvite: true,
@@ -71,7 +74,8 @@ function SettingsPage() {
       <SectionCard>
         <GroupTitle icon={<UserCog size={18} />}>계정 및 프로필</GroupTitle>
         <div className="divide-y" style={{ borderColor: "var(--c-line)" }}>
-          <Row label="닉네임" value={ME.nickname} chevron />
+          <Row label="닉네임" value={displayName} chevron />
+          <Row label="이메일" value={user?.email ?? "-"} />
           <Row label="한 줄 소개" value={ME.bio} chevron />
           <div className="flex items-center justify-between py-3.5">
             <span className="text-sm font-bold">응원하는 팀</span>

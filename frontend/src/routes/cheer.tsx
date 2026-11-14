@@ -1,11 +1,24 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router"
 import { CalendarDays, Home, LogOut, Moon, Settings, Sun, Trophy, User } from "lucide-react"
 import { Mascot } from "@/cheer/components/mascot"
 import { useTheme } from "@/components/theme-provider"
+import { isLoggedIn } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/cheer")({
   component: CheerLayout,
+  beforeLoad: () => {
+    if (!isLoggedIn()) {
+      throw redirect({ to: "/cheer/login" })
+    }
+  },
 })
 
 const NAV = [
@@ -19,6 +32,14 @@ const NAV = [
 function CheerLayout() {
   const { resolvedTheme, setTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token")
+    queryClient.clear()
+    navigate({ to: "/cheer/login" })
+  }
   return (
     <div className="cheer-scope flex min-h-screen w-full">
       {/* Sidebar */}
@@ -72,12 +93,13 @@ function CheerLayout() {
           {isDark ? "라이트 모드" : "다크 모드"}
         </button>
 
-        <Link
-          to="/cheer/login"
+        <button
+          type="button"
+          onClick={handleLogout}
           className="mt-1 flex items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-[var(--c-muted)] hover:bg-[var(--c-surface-2)]"
         >
           <LogOut size={16} /> 로그아웃
-        </Link>
+        </button>
       </aside>
 
       {/* Content */}
