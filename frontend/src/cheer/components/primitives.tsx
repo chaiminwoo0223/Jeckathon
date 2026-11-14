@@ -47,7 +47,7 @@ export function SectionTitle({
 }
 
 // 팀 로고 대체 칩 (약어 + 팀 컬러)
-export function TeamLogo({ team, size = 32 }: { team: Team; size?: number }) {
+export function TeamLogo({ team, size = 32 }: { team: Pick<Team, "name" | "short" | "color">; size?: number }) {
   return (
     <div
       className="grid shrink-0 place-items-center rounded-full font-black text-white"

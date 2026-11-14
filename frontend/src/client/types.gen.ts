@@ -113,6 +113,112 @@ export type ItemsPublic = {
 };
 
 /**
+ * MatchDay
+ */
+export type MatchDay = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Matches
+     */
+    matches: Array<MatchDetail>;
+};
+
+/**
+ * MatchDetail
+ *
+ * 팀 정보를 풀어 담은 경기 응답 (화면이 팀명·로고를 바로 그린다).
+ */
+export type MatchDetail = {
+    /**
+     * League
+     */
+    league: string;
+    /**
+     * Kickoff At
+     */
+    kickoff_at: string;
+    status?: MatchStatus;
+    /**
+     * Home Score
+     */
+    home_score?: number | null;
+    /**
+     * Away Score
+     */
+    away_score?: number | null;
+    /**
+     * Finished At
+     */
+    finished_at?: string | null;
+    /**
+     * Venue
+     */
+    venue?: string;
+    /**
+     * Round Label
+     */
+    round_label?: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Home Team Id
+     */
+    home_team_id: string;
+    /**
+     * Away Team Id
+     */
+    away_team_id: string;
+    home_team: TeamPublic;
+    away_team: TeamPublic;
+};
+
+/**
+ * MatchStatus
+ */
+export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED';
+
+/**
+ * MatchesByMonth
+ */
+export type MatchesByMonth = {
+    /**
+     * Month
+     */
+    month: string;
+    /**
+     * Days
+     */
+    days: Array<MatchDay>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * MatchesToday
+ */
+export type MatchesToday = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Data
+     */
+    data: Array<MatchDetail>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * Message
  */
 export type Message = {
@@ -156,6 +262,54 @@ export type PrivateUserCreate = {
      * Is Verified
      */
     is_verified?: boolean;
+};
+
+/**
+ * TeamPublic
+ */
+export type TeamPublic = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Logo Url
+     */
+    logo_url?: string;
+    /**
+     * League
+     */
+    league: string;
+    /**
+     * Short Name
+     */
+    short_name?: string;
+    /**
+     * Color
+     */
+    color?: string;
+    /**
+     * Id
+     */
+    id: string;
+};
+
+/**
+ * TeamsPublic
+ */
+export type TeamsPublic = {
+    /**
+     * Data
+     */
+    data: Array<TeamPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -920,6 +1074,98 @@ export type itemsUpdateItemResponses = {
 };
 
 export type itemsUpdateItemResponse = itemsUpdateItemResponses[keyof itemsUpdateItemResponses];
+
+export type teamsReadTeamsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/teams/';
+};
+
+export type teamsReadTeamsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TeamsPublic;
+};
+
+export type teamsReadTeamsResponse = teamsReadTeamsResponses[keyof teamsReadTeamsResponses];
+
+export type matchesReadMatchesByMonthData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Month
+         */
+        month: string;
+    };
+    url: '/api/v1/matches/';
+};
+
+export type matchesReadMatchesByMonthErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type matchesReadMatchesByMonthError = matchesReadMatchesByMonthErrors[keyof matchesReadMatchesByMonthErrors];
+
+export type matchesReadMatchesByMonthResponses = {
+    /**
+     * Successful Response
+     */
+    200: MatchesByMonth;
+};
+
+export type matchesReadMatchesByMonthResponse = matchesReadMatchesByMonthResponses[keyof matchesReadMatchesByMonthResponses];
+
+export type matchesReadMatchesTodayData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/matches/today';
+};
+
+export type matchesReadMatchesTodayResponses = {
+    /**
+     * Successful Response
+     */
+    200: MatchesToday;
+};
+
+export type matchesReadMatchesTodayResponse = matchesReadMatchesTodayResponses[keyof matchesReadMatchesTodayResponses];
+
+export type matchesReadMatchData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{id}';
+};
+
+export type matchesReadMatchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type matchesReadMatchError = matchesReadMatchErrors[keyof matchesReadMatchErrors];
+
+export type matchesReadMatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: MatchDetail;
+};
+
+export type matchesReadMatchResponse = matchesReadMatchResponses[keyof matchesReadMatchResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

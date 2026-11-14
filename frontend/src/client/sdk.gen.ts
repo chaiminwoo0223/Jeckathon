@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { itemsCreateItemData, itemsCreateItemErrors, itemsCreateItemResponses, itemsDeleteItemData, itemsDeleteItemErrors, itemsDeleteItemResponses, itemsReadItemData, itemsReadItemErrors, itemsReadItemResponses, itemsReadItemsData, itemsReadItemsErrors, itemsReadItemsResponses, itemsUpdateItemData, itemsUpdateItemErrors, itemsUpdateItemResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, matchesReadMatchData, matchesReadMatchErrors, matchesReadMatchesByMonthData, matchesReadMatchesByMonthErrors, matchesReadMatchesByMonthResponses, matchesReadMatchesTodayData, matchesReadMatchesTodayResponses, matchesReadMatchResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, teamsReadTeamsData, teamsReadTeamsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -360,6 +360,62 @@ export class ItemsService {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
+        });
+    }
+}
+
+export class TeamsService {
+    /**
+     * Read Teams
+     *
+     * 전체 팀 목록.
+     */
+    public static readTeams<ThrowOnError extends boolean = true>(options?: Options<teamsReadTeamsData, ThrowOnError>) {
+        return (options?.client ?? client).get<teamsReadTeamsResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/teams/',
+            ...options
+        });
+    }
+}
+
+export class MatchesService {
+    /**
+     * Read Matches By Month
+     *
+     * 월별 경기 (캘린더용). 경기가 있는 날짜별로 그룹.
+     */
+    public static readMatchesByMonth<ThrowOnError extends boolean = true>(options: Options<matchesReadMatchesByMonthData, ThrowOnError>) {
+        return (options.client ?? client).get<matchesReadMatchesByMonthResponses, matchesReadMatchesByMonthErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/matches/',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Matches Today
+     *
+     * 오늘(KST) 경기 목록.
+     */
+    public static readMatchesToday<ThrowOnError extends boolean = true>(options?: Options<matchesReadMatchesTodayData, ThrowOnError>) {
+        return (options?.client ?? client).get<matchesReadMatchesTodayResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/matches/today',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Match
+     *
+     * 경기 상세 (팀, 시각, 상태, 스코어).
+     */
+    public static readMatch<ThrowOnError extends boolean = true>(options: Options<matchesReadMatchData, ThrowOnError>) {
+        return (options.client ?? client).get<matchesReadMatchResponses, matchesReadMatchErrors, ThrowOnError>({
+            responseType: 'json',
+            url: '/api/v1/matches/{id}',
+            ...options
         });
     }
 }
