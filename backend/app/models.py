@@ -497,3 +497,60 @@ class CheerRecordsPublic(SQLModel):
     count: int  # 전체 기록 수
     page: int
     size: int
+
+
+class Badge(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    code: str = Field(unique=True, index=True, max_length=50)  # "VICTORY_FAIRY"
+    name: str = Field(max_length=100)  # "승리요정"
+    description: str = Field(max_length=255)  # "승률 60% 이상"
+    icon_url: str = Field(default="", max_length=500)
+
+
+class UserBadge(SQLModel, table=True):
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", primary_key=True, ondelete="CASCADE"
+    )
+    badge_id: uuid.UUID = Field(
+        foreign_key="badge.id", primary_key=True, ondelete="CASCADE"
+    )
+    acquired_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class PointReason(enum.StrEnum):
+    MATCH_RESULT = "MATCH_RESULT"
+    DECIBEL_TOP3 = "DECIBEL_TOP3"
+
+
+class PointTransaction(SQLModel, table=True):
+    """포인트 내역. 같은 (유저, 사유, 대상)에는 한 번만 지급한다."""
+
+    __table_args__ = (UniqueConstraint("user_id", "reason", "related_id"),)
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    amount: int  # +100, +50, +30 ...
+    reason: PointReason
+    related_id: str | None = Field(default=None, max_length=64)  # matchId or battleId
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class MatchFinishIn(SQLModel):
+    home_score: int = Field(ge=0)
+    away_score: int = Field(ge=0)
+
+
+class MatchFinishOut(SQLModel):
+    match: MatchDetail
+    settled: int  # 이번에 확정된 응원 기록 수
+    win: int
+    draw: int
+    lose: int
