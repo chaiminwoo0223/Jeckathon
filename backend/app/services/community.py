@@ -1,6 +1,6 @@
 """커뮤니티 입장 규칙(명세 §4.4)과 공용 조회.
 
-입장은 경기 시작 1시간 전부터 경기 종료까지이고, 응원 신청한 경기만 가능하다.
+입장은 경기 시작 3시간 전부터 경기 종료까지이고, 응원 신청한 경기만 가능하다.
 경기 상태는 자동으로 LIVE가 되지 않으므로(스케줄러 없음) 상태가 아니라 시간으로 판단한다.
 `/communities/mine`, `/matches/{id}/community`, `join`이 모두 이 규칙 한 곳을 쓴다.
 """
@@ -13,7 +13,7 @@ from sqlmodel import Session, col, func, select
 
 from app.models import Community, CommunityMember, Match, MatchStatus
 
-ENTER_LEAD = timedelta(hours=1)
+ENTER_LEAD = timedelta(hours=3)
 
 
 def enter_window(match: Match, now: datetime | None = None) -> tuple[datetime, bool]:

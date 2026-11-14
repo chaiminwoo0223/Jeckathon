@@ -148,7 +148,7 @@ def join_community(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
 ) -> Any:
     """
-    입장(초대장 → 입장). 응원 신청한 경기만, 경기 시작 1시간 전부터 종료 전까지 가능하다.
+    입장(초대장 → 입장). 응원 신청한 경기만, 경기 시작 3시간 전부터 종료 전까지 가능하다.
     이미 멤버면 그대로 성공한다.
     """
     community, match = _get_community(session, id)
